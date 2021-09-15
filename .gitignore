@@ -1,0 +1,8 @@
+/build
+/out
+/.vs
+.DS_Store
+*~
+*.swp
+*.swo
+/notes
