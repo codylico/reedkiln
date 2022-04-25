@@ -120,6 +120,8 @@ namespace reedkiln {
     char const* what() const
 #  if __cplusplus >= 201103L
         noexcept
+#  else
+        throw()
 #  endif /*__cplusplus*/
     {
       return "A test callback reports \"not ok\".";

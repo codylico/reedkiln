@@ -15,7 +15,7 @@ if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
       PRIVATE reedkiln)
     add_test(NAME "reedkiln::cxx" COMMAND reedkiln_test_cxx)
   endif (Reedkiln_TEST_CXX)
-  
+
   add_executable(reedkiln_test_c "test_c.c")
   target_link_libraries(reedkiln_test_c
     PRIVATE reedkiln)

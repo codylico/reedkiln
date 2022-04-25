@@ -194,6 +194,11 @@ int reedkiln_prefix_match(char const* name, char const* prefix) {
   return *prefix_p == '\0';
 }
 
+void reedkiln_set_vtable(struct reedkiln_vtable const* vt) {
+  reedkiln_vtable_c = *vt;
+  return;
+}
+
 int reedkiln_main
     (struct reedkiln_entry const* t, int argc, char **argv, void* p)
 {
