@@ -161,11 +161,7 @@ void reedkiln_failfast(void) {
     longjmp(reedkiln_next_jmp.buf, 1);
   } else {
     reedkiln_next_status = Reedkiln_NOT_OK;
-#if (defined Reedkiln_Threads)
-    thrd_exit(Reedkiln_NOT_OK);
-#else
     abort();
-#endif /*Reedkiln_Threads*/
   }
 }
 /* END   error jump */
@@ -256,7 +252,8 @@ int reedkiln_main
     case 0:
       result_text = "ok"; break;
     default:
-      total_res = EXIT_FAILURE;
+      if (!(test->flags & Reedkiln_TODO))
+        total_res = EXIT_FAILURE;
       result_text = "not ok";break;
     }
     fprintf(stdout, "%s %lu - %s%s\n",

@@ -105,6 +105,7 @@ namespace reedkiln {
   class cxx_failure;
   int cxx_catcher(::reedkiln_cb cb, void* ptr);
   void cxx_fail(void);
+  void cxx_set_vtable();
   int cxx_main
     (struct reedkiln_entry const* t, int argc, char **argv, void* p);
 
@@ -145,6 +146,14 @@ namespace reedkiln {
   void cxx_set_vtable() {
     struct reedkiln_vtable const vt = { &cxx_catcher, &cxx_fail };
     return reedkiln_set_vtable(&vt);
+  }
+
+  inline
+  int cxx_main
+    (struct reedkiln_entry const* t, int argc, char **argv, void* p)
+  {
+    ::reedkiln::cxx_set_vtable();
+    return ::reedkiln_main(t, argc, argv, p);
   }
 };
 #endif /*__cplusplus*/
