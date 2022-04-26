@@ -1,5 +1,6 @@
 #include "../reedkiln.h"
 #include <string.h>
+#include <stdio.h>
 
 
 int test_memrand(void*);
@@ -33,6 +34,7 @@ int test_rand(void* p) {
   unsigned int w = reedkiln_rand();
   if (v == w)
     reedkiln_fail();
+  fprintf(stderr, "# %u != %u\n", v, w);
   return Reedkiln_OK;
 }
 

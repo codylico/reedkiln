@@ -47,6 +47,7 @@ static int reedkiln_prefix_match(char const* name, char const* prefix);
 static int reedkiln_passthrough(reedkiln_cb cb, void* ptr);
 static void reedkiln_failfast(void);
 static int reedkiln_run_test(reedkiln_cb cb, void* p);
+static unsigned int reedkiln_default_seed(void);
 
 static struct reedkiln_vtable reedkiln_vtable_c = {
   &reedkiln_passthrough,
@@ -123,6 +124,11 @@ void reedkiln_srand(unsigned int s) {
 #else
   reedkiln_rand_seed = s;
 #endif /*Reedkiln_Atomic*/
+}
+
+unsigned int reedkiln_default_seed(void) {
+  unsigned long int const src = (unsigned long int)time(NULL);
+  return (unsigned int)(src*0x87e5c341);
 }
 
 void reedkiln_memrand(void* b, reedkiln_size sz) {
@@ -206,6 +212,7 @@ int reedkiln_main
   size_t test_i;
   int total_res = EXIT_SUCCESS;
   char const* testname_prefix = "";
+  unsigned int rand_seed = reedkiln_default_seed();
   /* inspect args */{
     int argi;
     int help_tf = 0;
@@ -218,6 +225,13 @@ int reedkiln_main
           break;
         } else if (strcmp(argv[argi], "-l") == 0) {
           help_tf = 2;
+        } else if (strcmp(argv[argi], "-s") == 0) {
+          if (++argi >= argc) {
+            fputs("option \"-s\" requires a number\n", stderr);
+            help_tf = 1;
+          } else {
+            rand_seed = (unsigned int)strtoul(argv[argi], NULL, 0);
+          }
         } else {
           fprintf(stderr,"unknown option \"%s\"\n", argv[argi]);
           help_tf = 1;
@@ -237,7 +251,8 @@ int reedkiln_main
         fputs("usage: %s [option [option ...]] [(prefix)]\n\n"
           "options:\n"
           "  -?, -h      print a help message\n"
-          "  -l          list all test names\n\n"
+          "  -l          list all test names\n"
+          "  -s (seed)   set the random seed\n\n"
           "parameters:\n"
           "  (prefix)    run tests whose names start with this prefix\n",
           stderr);
@@ -246,13 +261,18 @@ int reedkiln_main
     }
   }
   fprintf(stdout,"1..%lu\n", (unsigned long int)test_count);
+  fprintf(stdout,"# random_seed: %#x\n", rand_seed);
   for (test_i = 0; test_i < test_count; ++test_i) {
     struct reedkiln_entry const* test = t+test_i;
     char const* result_text;
     char const* direct_text = reedkiln_entry_directive(test);
     int skip_tf = ((test->flags & Reedkiln_SKIP)!= 0)
         || (!reedkiln_prefix_match(test->name, testname_prefix));
-    int const res = skip_tf ? 0 : reedkiln_run_test(test->cb, p);
+    int res = 0;
+    if (!skip_tf) {
+      reedkiln_srand(rand_seed);
+      res = reedkiln_run_test(test->cb, p);
+    }
     switch (res) {
     case 0:
       result_text = "ok"; break;
