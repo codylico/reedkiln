@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Unlicense */
 /**
  * @file reedkiln.c
  * @brief Short test implementation.

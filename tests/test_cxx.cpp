@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Unlicense
 #include "../reedkiln.h"
 #include <cstring>
 
