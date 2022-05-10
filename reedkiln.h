@@ -7,7 +7,9 @@
 #define hg_Reedkiln_reedkiln_h_
 
 #if !(defined Reedkiln_UseExpect)
-#  /*define Reedkiln_UseExpect*/
+#  if (defined __cplusplus) && (__cplusplus >= 201103L)
+#    define Reedkiln_UseExpect
+#  endif /*__cplusplus*/
 #endif /*Reedkiln_UseExpect*/
 #if !(defined Reedkiln_UseNoexcept)
 #  if (defined __cplusplus) && (__cplusplus >= 201103L)

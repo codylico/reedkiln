@@ -7,8 +7,8 @@ else (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
 if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
-  option(Reedkiln_TEST_CXX "Enable C++ test" OFF)
-  if (Reedkiln_TEST_CXX)
+  option(Reedkiln_TEST_CXX "Enable C++ test" "${Reedkiln_ADD_CXX}")
+  if (Reedkiln_ADD_CXX AND Reedkiln_TEST_CXX)
     enable_language(CXX)
     add_executable(reedkiln_test_cxx "test_cxx.cpp")
     target_link_libraries(reedkiln_test_cxx
@@ -26,10 +26,10 @@ if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
     target_link_libraries(reedkiln_test_expect
       PRIVATE reedkiln)
     target_compile_features(reedkiln_test_expect
-      PRIVATE cxx_variadic_templates
+      PRIVATE cxx_variadic_templates cxx_static_assert cxx_constexpr
       )
     add_test(NAME "reedkiln::expect" COMMAND reedkiln_test_expect)
-  endif (Reedkiln_TEST_CXX)
+  endif (Reedkiln_ADD_CXX AND Reedkiln_TEST_CXX)
 
   add_executable(reedkiln_test_c "test_c.c")
   target_link_libraries(reedkiln_test_c
