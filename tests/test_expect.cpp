@@ -1,5 +1,6 @@
 #include "../reedkiln.h"
 #include <stdexcept>
+#include <string>
 #include <cstring>
 
 class free_box {
@@ -41,6 +42,7 @@ public:
 
 int test_expect(void*);
 int test_cancel(void*);
+int test_thrown(void*);
 int test_zeta(void*);
 
 struct reedkiln_entry tests[] = {
@@ -51,6 +53,10 @@ struct reedkiln_entry tests[] = {
   { "cancel", test_cancel, Reedkiln_TODO, reedkiln::expect_box<void,
         reedkiln::cxx_reject<std::out_of_range>,
         reedkiln::cxx_reject<std::range_error>
+      >::ptr },
+  { "thrown", test_thrown, Reedkiln_TODO,
+      reedkiln::expect_box<std::string,
+        reedkiln::cxx_catch<std::out_of_range>
       >::ptr },
   { "zeta", test_zeta },
   { NULL, NULL }
@@ -75,6 +81,14 @@ int test_cancel(void* p) {
   } else {
     throw std::range_error("cancel 0");
   }
+  return Reedkiln_OK;
+}
+
+/* test exception canceller's ability to avoid forced `abort()` */
+int test_thrown(void* p) {
+  std::string& str = *static_cast<std::string*>(p);
+  str += "long text string";
+  throw std::out_of_range("throws 1");
   return Reedkiln_OK;
 }
 

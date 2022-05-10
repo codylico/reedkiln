@@ -205,6 +205,14 @@ namespace reedkiln {
     using type = ExceptionType;
   };
   /**
+   * @brief Catch the exception and report fail-by-exception.
+   * @tparam ExceptionType type of exception to catch
+   */
+  template <typename ExceptionType>
+  class cxx_catch {
+    using type = ExceptionType;
+  };
+  /**
    * @brief Reject the exception and report failure-by-throw.
    * @tparam ExceptionType type of exception to reject
    */
@@ -215,6 +223,22 @@ namespace reedkiln {
 
   template <typename Exception>
   class cxx_subcatcher {
+  private:
+    template <typename t>
+    struct unsupported {
+      static constexpr bool value = false;
+    };
+  public:
+    static signed char check(std::exception_ptr ep) noexcept {
+      static_assert(unsupported<Exception>::value,
+          "Wrap your exception type in cxx_catch<t>,"
+          " cxx_accept<t>, or cxx_reject<t>.");
+      reedkiln_bail_out("Unhandled exception type.");
+      /* [[unreachable]] */return -1;
+    }
+  };
+  template <typename Exception>
+  class cxx_subcatcher< cxx_catch<Exception> > {
   public:
     static signed char check(std::exception_ptr ep) noexcept {
       try {
