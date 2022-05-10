@@ -14,6 +14,11 @@
 #    define Reedkiln_UseNoexcept
 #  endif /*__cplusplus*/
 #endif /*Reedkiln_UseNoexcept*/
+#if !(defined Reedkiln_UseConstexpr)
+#  if (defined __cplusplus) && (__cplusplus >= 201103L)
+#    define Reedkiln_UseConstexpr
+#  endif /*__cplusplus*/
+#endif /*Reedkiln_UseConstexpr*/
 
 #if defined(__cplusplus)
 #  include <exception>
@@ -188,12 +193,18 @@ namespace reedkiln {
       delete static_cast<t*>(p);
     }
     static reedkiln_box const value;
-    static reedkiln_box const* const ptr;
+#  if (defined Reedkiln_UseConstexpr)
+    static constexpr reedkiln_box const* ptr = &value;
+#  else
+    static reedkiln_box const* ptr;
+#  endif /*Reedkiln_UseConstexpr*/
   };
   template <typename t>
   reedkiln_box const cxx_box<t>::value = { &setup, &teardown };
+#  if !(defined Reedkiln_UseConstexpr)
   template <typename t>
   reedkiln_box const* const cxx_box<t>::ptr = &cxx_box<t>::value;
+#  endif /*Reedkiln_UseConstexpr*/
 
 #  if (defined Reedkiln_UseExpect)
   /**
@@ -315,7 +326,7 @@ namespace reedkiln {
       return new t;
     }
     static reedkiln_box const value;
-    static reedkiln_box const* const ptr;
+    static constexpr reedkiln_box const* ptr = &value;
   };
   template <typename... Exceptions>
   struct expect_box<void, Exceptions...> {
@@ -325,21 +336,15 @@ namespace reedkiln {
       return p;
     }
     static reedkiln_box const value;
-    static reedkiln_box const* const ptr;
+    static constexpr reedkiln_box const* ptr = &value;
   };
 
   template <typename t, typename... Exceptions>
   reedkiln_box const expect_box<t, Exceptions...>::value =
     { &expect_box<t, Exceptions...>::setup, &cxx_box<t>::teardown };
-  template <typename t, typename... Exceptions>
-  reedkiln_box const* const expect_box<t, Exceptions...>::ptr =
-    &expect_box<t, Exceptions...>::value;
   template <typename... Exceptions>
   reedkiln_box const expect_box<void, Exceptions...>::value =
     { &expect_box<void, Exceptions...>::setup, 0 };
-  template <typename... Exceptions>
-  reedkiln_box const* const expect_box<void, Exceptions...>::ptr =
-    &expect_box<void, Exceptions...>::value;
 #  endif /*Reedkiln_UseExpect*/
 
 
