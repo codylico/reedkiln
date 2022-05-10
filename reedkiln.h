@@ -6,6 +6,12 @@
 #if !defined(hg_Reedkiln_reedkiln_h_)
 #define hg_Reedkiln_reedkiln_h_
 
+#if !(defined Reedkiln_UseNoexcept)
+#  if (defined __cplusplus) && (__cplusplus >= 201103L)
+#    define Reedkiln_UseNoexcept
+#  endif /*__cplusplus*/
+#endif /*Reedkiln_UseNoexcept*/
+
 #if defined(__cplusplus)
 #  include <exception>
 #  include <cstddef>
@@ -149,19 +155,15 @@ namespace reedkiln {
     (struct reedkiln_entry const* t, int argc, char **argv, void* p);
 
 
-  class cxx_failure
-#  if __cplusplus >= 201103L
-    final
-#  endif /*__cplusplus*/
-    : public std::exception {
+  class cxx_failure : public std::exception {
   public:
     cxx_failure() : std::exception() {}
     char const* what() const
-#  if __cplusplus >= 201103L
+#  if (defined Reedkiln_UseNoexcept)
         noexcept
 #  else
         throw()
-#  endif /*__cplusplus*/
+#  endif /*Reedkiln_UseNoexcept*/
     {
       return "A test callback reports \"not ok\".";
     }
@@ -175,11 +177,11 @@ namespace reedkiln {
       return new t;
     }
     static void teardown(void* p)
-#  if __cplusplus >= 201103L
+#  if (defined Reedkiln_UseNoexcept)
         noexcept
 #  else
         throw()
-#  endif /*__cplusplus*/
+#  endif /*Reedkiln_UseNoexcept*/
     {
       delete static_cast<t*>(p);
     }
