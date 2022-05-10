@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: Unlicense */
 /**
  * @file reedkiln.h
  * @brief Short test header.
@@ -19,7 +20,24 @@
 extern "C" {
 #endif /*__cplusplus*/
 
-typedef int (*reedkiln_cb)(void*);
+/**
+ * @brief Testing code.
+ * @param p either a box item (if setup is provided) or userdata from main
+ * @return a @link reedkiln_result @endlink value
+ */
+typedef int (*reedkiln_cb)(void* p);
+
+/**
+ * @brief Teardown code.
+ * @param p box item to destroy and free
+ */
+typedef void (*reedkiln_teardown_cb)(void* p);
+/**
+ * @brief Setup code.
+ * @param p user data from main
+ * @return a box item on success, NULL otherwise
+ */
+typedef void* (*reedkiln_setup_cb)(void*);
 
 enum reedkiln_flag {
   Reedkiln_ZERO = 0,
@@ -27,10 +45,20 @@ enum reedkiln_flag {
   Reedkiln_SKIP = 2
 };
 
+struct reedkiln_box {
+  reedkiln_setup_cb setup;
+  reedkiln_teardown_cb teardown;
+};
+typedef struct reedkiln_box reedkiln_box;
+
 struct reedkiln_entry {
   char const* name;
   reedkiln_cb cb;
   unsigned int flags;
+  /**
+   * @brief Setup and teardown callbacks.
+   */
+  struct reedkiln_box const* box;
 };
 typedef struct reedkiln_entry reedkiln_entry;
 
@@ -96,6 +124,17 @@ _Noreturn
 #endif /*__cplusplus || __STDC_VERSION__*/
 void reedkiln_fail(void);
 
+/**
+ * @brief Bail out from all tests.
+ * @param reason reason for bailing on tests
+ */
+#if (defined __cplusplus) && (__cplusplus >= 201103L)
+[[noreturn]]
+#elif (defined __STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+_Noreturn
+#endif /*__cplusplus || __STDC_VERSION__*/
+void reedkiln_bail_out(char const* reason);
+
 #if defined(__cplusplus)
 };
 #endif /*__cplusplus*/
@@ -128,6 +167,28 @@ namespace reedkiln {
     }
   };
 
+  template <typename t>
+  struct cxx_box {
+  public:
+    using type = t;
+    static void* setup(void*) {
+      return new t;
+    }
+    static void teardown(void* p)
+#  if __cplusplus >= 201103L
+        noexcept
+#  else
+        throw()
+#  endif /*__cplusplus*/
+    {
+      delete static_cast<t*>(p);
+    }
+    static reedkiln_box const value;
+  };
+  template <typename t>
+  reedkiln_box const cxx_box<t>::value = { &setup, &teardown };
+
+
   inline
   int cxx_catcher(::reedkiln_cb cb, void* ptr) {
     try {
@@ -138,6 +199,7 @@ namespace reedkiln {
       /* let the tester break and */throw;
     }
   }
+
 
   inline
   void cxx_fail(void) {

@@ -14,6 +14,13 @@ if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
     target_link_libraries(reedkiln_test_cxx
       PRIVATE reedkiln)
     add_test(NAME "reedkiln::cxx" COMMAND reedkiln_test_cxx)
+
+    add_executable(reedkiln_test_raii_bail "test_raii_bail.cpp")
+    target_link_libraries(reedkiln_test_raii_bail
+      PRIVATE reedkiln)
+    add_test(NAME "reedkiln::raii_bail" COMMAND reedkiln_test_raii_bail)
+    set_tests_properties("reedkiln::raii_bail"
+      PROPERTIES WILL_FAIL TRUE)
   endif (Reedkiln_TEST_CXX)
 
   add_executable(reedkiln_test_c "test_c.c")
@@ -22,5 +29,12 @@ if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
   # adapted from:
   # https://cliutils.gitlab.io/modern-cmake/chapters/testing.html
   add_test(NAME "reedkiln::c" COMMAND reedkiln_test_c)
+
+  add_executable(reedkiln_test_bail "test_bail.c")
+  target_link_libraries(reedkiln_test_bail
+    PRIVATE reedkiln)
+  add_test(NAME "reedkiln::bail" COMMAND reedkiln_test_bail)
+  set_tests_properties("reedkiln::bail"
+    PROPERTIES WILL_FAIL TRUE)
 endif (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
 
