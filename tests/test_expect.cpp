@@ -44,14 +44,14 @@ int test_cancel(void*);
 int test_zeta(void*);
 
 struct reedkiln_entry tests[] = {
-  { "expect", test_expect, 0, &reedkiln::expect_box<void,
+  { "expect", test_expect, 0, reedkiln::expect_box<void,
         reedkiln::cxx_accept<std::out_of_range>,
         reedkiln::cxx_accept<std::range_error>
-      >::value },
-  { "cancel", test_cancel, Reedkiln_TODO, &reedkiln::expect_box<void,
+      >::ptr },
+  { "cancel", test_cancel, Reedkiln_TODO, reedkiln::expect_box<void,
         reedkiln::cxx_reject<std::out_of_range>,
         reedkiln::cxx_reject<std::range_error>
-      >::value },
+      >::ptr },
   { "zeta", test_zeta },
   { NULL, NULL }
 };

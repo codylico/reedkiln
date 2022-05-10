@@ -53,9 +53,9 @@ int test_zeta(void*);
 struct reedkiln_entry tests[] = {
   { "cxx/raii", test_cxx_raii, Reedkiln_TODO },
   { "cxx/setup", test_cxx_setup, 0,
-    &reedkiln::cxx_box<std::string>::value },
+    reedkiln::cxx_box<std::string>::ptr },
   { "cxx/setupfail", test_cxx_setupfail, Reedkiln_TODO,
-    &reedkiln::cxx_box<std::string>::value },
+    reedkiln::cxx_box<std::string>::ptr },
   { "memrand", test_memrand },
   { "rand", test_rand },
   { "skip", test_skip, Reedkiln_SKIP },

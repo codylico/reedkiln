@@ -188,9 +188,12 @@ namespace reedkiln {
       delete static_cast<t*>(p);
     }
     static reedkiln_box const value;
+    static reedkiln_box const* const ptr;
   };
   template <typename t>
   reedkiln_box const cxx_box<t>::value = { &setup, &teardown };
+  template <typename t>
+  reedkiln_box const* const cxx_box<t>::ptr = &cxx_box<t>::value;
 
 #  if (defined Reedkiln_UseExpect)
   /**
@@ -288,6 +291,7 @@ namespace reedkiln {
       return new t;
     }
     static reedkiln_box const value;
+    static reedkiln_box const* const ptr;
   };
   template <typename... Exceptions>
   struct expect_box<void, Exceptions...> {
@@ -297,14 +301,21 @@ namespace reedkiln {
       return p;
     }
     static reedkiln_box const value;
+    static reedkiln_box const* const ptr;
   };
 
   template <typename t, typename... Exceptions>
   reedkiln_box const expect_box<t, Exceptions...>::value =
     { &expect_box<t, Exceptions...>::setup, &cxx_box<t>::teardown };
+  template <typename t, typename... Exceptions>
+  reedkiln_box const* const expect_box<t, Exceptions...>::ptr =
+    &expect_box<t, Exceptions...>::value;
   template <typename... Exceptions>
   reedkiln_box const expect_box<void, Exceptions...>::value =
     { &expect_box<void, Exceptions...>::setup, 0 };
+  template <typename... Exceptions>
+  reedkiln_box const* const expect_box<void, Exceptions...>::ptr =
+    &expect_box<void, Exceptions...>::value;
 #  endif /*Reedkiln_UseExpect*/
 
 
