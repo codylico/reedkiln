@@ -258,7 +258,7 @@ namespace reedkiln {
     }
   };
 
-  template <typename t, typename... Exceptions>
+  template <typename... Exceptions>
   class cxx_expecter {
   public:
     static int catcher(::reedkiln_cb cb, void* ptr) {
