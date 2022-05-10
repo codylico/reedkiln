@@ -21,6 +21,14 @@ if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
     add_test(NAME "reedkiln::raii_bail" COMMAND reedkiln_test_raii_bail)
     set_tests_properties("reedkiln::raii_bail"
       PROPERTIES WILL_FAIL TRUE)
+
+    add_executable(reedkiln_test_expect "test_expect.cpp")
+    target_link_libraries(reedkiln_test_expect
+      PRIVATE reedkiln)
+    target_compile_features(reedkiln_test_expect
+      PRIVATE cxx_variadic_templates
+      )
+    add_test(NAME "reedkiln::expect" COMMAND reedkiln_test_expect)
   endif (Reedkiln_TEST_CXX)
 
   add_executable(reedkiln_test_c "test_c.c")
