@@ -271,8 +271,18 @@ int reedkiln_main
         || (!reedkiln_prefix_match(test->name, testname_prefix));
     int res = 0;
     if (!skip_tf) {
+      struct reedkiln_box const* box = test->box;
+      void* box_item = NULL;
+      int box_called = 0;
       reedkiln_srand(rand_seed);
-      res = reedkiln_run_test(test->cb, p);
+      if (box != NULL && box->setup != NULL) {
+        box_item = (*box->setup)(p);
+        box_called = 1;
+      }
+      res = reedkiln_run_test(test->cb, box_called ? box_item : p);
+      if (box_called && box->teardown != NULL) {
+        (*box->teardown)(box_item);
+      }
     }
     switch (res) {
     case 0:

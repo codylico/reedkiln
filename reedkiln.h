@@ -20,7 +20,24 @@
 extern "C" {
 #endif /*__cplusplus*/
 
-typedef int (*reedkiln_cb)(void*);
+/**
+ * @brief Testing code.
+ * @param p either a box item (if setup is provided) or userdata from main
+ * @return a @link reedkiln_result @endlink value
+ */
+typedef int (*reedkiln_cb)(void* p);
+
+/**
+ * @brief Teardown code.
+ * @param p box item to destroy and free
+ */
+typedef void (*reedkiln_teardown_cb)(void* p);
+/**
+ * @brief Setup code.
+ * @param p user data from main
+ * @return a box item on success, NULL otherwise
+ */
+typedef void* (*reedkiln_setup_cb)(void*);
 
 enum reedkiln_flag {
   Reedkiln_ZERO = 0,
@@ -28,10 +45,20 @@ enum reedkiln_flag {
   Reedkiln_SKIP = 2
 };
 
+struct reedkiln_box {
+  reedkiln_setup_cb setup;
+  reedkiln_teardown_cb teardown;
+};
+typedef struct reedkiln_box reedkiln_box;
+
 struct reedkiln_entry {
   char const* name;
   reedkiln_cb cb;
   unsigned int flags;
+  /**
+   * @brief Setup and teardown callbacks.
+   */
+  struct reedkiln_box const* box;
 };
 typedef struct reedkiln_entry reedkiln_entry;
 
