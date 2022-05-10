@@ -124,6 +124,17 @@ _Noreturn
 #endif /*__cplusplus || __STDC_VERSION__*/
 void reedkiln_fail(void);
 
+/**
+ * @brief Bail out from all tests.
+ * @param reason reason for bailing on tests
+ */
+#if (defined __cplusplus) && (__cplusplus >= 201103L)
+[[noreturn]]
+#elif (defined __STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+_Noreturn
+#endif /*__cplusplus || __STDC_VERSION__*/
+void reedkiln_bail_out(char const* reason);
+
 #if defined(__cplusplus)
 };
 #endif /*__cplusplus*/

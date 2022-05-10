@@ -22,5 +22,12 @@ if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
   # adapted from:
   # https://cliutils.gitlab.io/modern-cmake/chapters/testing.html
   add_test(NAME "reedkiln::c" COMMAND reedkiln_test_c)
+
+  add_executable(reedkiln_test_bail "test_bail.c")
+  target_link_libraries(reedkiln_test_bail
+    PRIVATE reedkiln)
+  add_test(NAME "reedkiln::bail" COMMAND reedkiln_test_bail)
+  set_tests_properties("reedkiln::bail"
+    PROPERTIES WILL_FAIL TRUE)
 endif (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
 

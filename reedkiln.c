@@ -48,7 +48,10 @@ static int reedkiln_prefix_match(char const* name, char const* prefix);
 static int reedkiln_passthrough(reedkiln_cb cb, void* ptr);
 static void reedkiln_failfast(void);
 static int reedkiln_run_test(reedkiln_cb cb, void* p);
+static int reedkiln_setup_redirect(void* d);
+static int reedkiln_run_setup(reedkiln_setup_cb cb, void* p, void** out);
 static unsigned int reedkiln_default_seed(void);
+static void reedkiln_print_bail(char const* reason);
 
 static struct reedkiln_vtable reedkiln_vtable_c = {
   &reedkiln_passthrough,
@@ -60,11 +63,19 @@ struct reedkiln_jmp {
   jmp_buf buf;
 };
 
+struct reedkiln_setup_data {
+  reedkiln_setup_cb cb;
+  void* p;
+  void* out;
+};
+
 /* BEGIN failure path */
 #if defined(Reedkiln_Atomic)
-static Reedkiln_Atomic_tag unsigned int reedkiln_next_status;
+static Reedkiln_Atomic_tag unsigned int reedkiln_next_status = Reedkiln_OK;
+static Reedkiln_Atomic_tag unsigned int reedkiln_bail_status = Reedkiln_OK;
 #else
-static unsigned int reedkiln_next_status;
+static unsigned int reedkiln_next_status = Reedkiln_OK;
+static unsigned int reedkiln_bail_status = Reedkiln_OK;
 #endif /*Reedkiln_Atomic*/
 
 static Reedkiln_Thread_local struct reedkiln_jmp reedkiln_next_jmp = {0};
@@ -79,6 +90,31 @@ void reedkiln_fail(void) {
   abort()/* in case the above doesn't work */;
 }
 
+void reedkiln_bail_out(char const* reason) {
+#if defined(Reedkiln_Atomic)
+  Reedkiln_Atomic_Put(&reedkiln_next_status, Reedkiln_NOT_OK);
+  Reedkiln_Atomic_Put(&reedkiln_bail_status, Reedkiln_NOT_OK);
+#else
+  reedkiln_next_status = Reedkiln_NOT_OK;
+  reedkiln_bail_status = Reedkiln_NOT_OK;
+#endif /*Reedkiln_Atomic*/
+  reedkiln_print_bail(reason);
+  (*reedkiln_vtable_c.fail_cb)();
+  /* in case the above doesn't work */{
+    abort();
+  }
+}
+
+void reedkiln_print_bail(char const* reason) {
+  fputs("Bail out!", stdout);
+  if (reason != NULL) {
+    fputc(' ', stdout);
+    fputs(reason, stdout);
+  }
+  fputc('\n', stdout);
+  return;
+}
+
 int reedkiln_run_test(reedkiln_cb cb, void* p) {
   int res;
   Reedkiln_Atomic_Put(&reedkiln_next_status, Reedkiln_OK);
@@ -87,6 +123,24 @@ int reedkiln_run_test(reedkiln_cb cb, void* p) {
   return res == Reedkiln_OK
     ? Reedkiln_Atomic_Get(&reedkiln_next_status)
     : res;
+}
+
+int reedkiln_setup_redirect(void* d) {
+  struct reedkiln_setup_data *const data =
+    (struct reedkiln_setup_data *)d;
+  data->out = (*data->cb)(data->p);
+  return Reedkiln_OK;
+}
+
+int reedkiln_run_setup(reedkiln_setup_cb cb, void* p, void** out) {
+  struct reedkiln_setup_data data;
+  int res;
+  data.cb = cb;
+  data.p = p;
+  data.out = NULL;
+  res = reedkiln_run_test(reedkiln_setup_redirect, &data);
+  *out = data.out;
+  return res;
 }
 /* END   failure path */
 
@@ -214,6 +268,8 @@ int reedkiln_main
   int total_res = EXIT_SUCCESS;
   char const* testname_prefix = "";
   unsigned int rand_seed = reedkiln_default_seed();
+  reedkiln_next_status = Reedkiln_OK;
+  reedkiln_bail_status = Reedkiln_OK;
   /* inspect args */{
     int argi;
     int help_tf = 0;
@@ -276,13 +332,23 @@ int reedkiln_main
       int box_called = 0;
       reedkiln_srand(rand_seed);
       if (box != NULL && box->setup != NULL) {
-        box_item = (*box->setup)(p);
-        box_called = 1;
+        res = reedkiln_run_setup(box->setup, p, &box_item);
+        if (reedkiln_bail_status != Reedkiln_OK) {
+          total_res = EXIT_FAILURE;
+          break;
+        } else if (res != Reedkiln_OK) {
+          box_called = 2;
+        } else box_called = 1;
       }
-      res = reedkiln_run_test(test->cb, box_called ? box_item : p);
-      if (box_called && box->teardown != NULL) {
+      if (box_called <= 1)
+        res = reedkiln_run_test(test->cb, box_called ? box_item : p);
+      if (box_called == 1 && box->teardown != NULL) {
         (*box->teardown)(box_item);
       }
+    }
+    if (reedkiln_bail_status != Reedkiln_OK) {
+      total_res = EXIT_FAILURE;
+      break;
     }
     switch (res) {
     case 0:

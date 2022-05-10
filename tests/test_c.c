@@ -20,7 +20,7 @@ struct reedkiln_box const box_one = { setup_one, teardown_one };
 struct reedkiln_entry tests[] = {
   { "memrand", test_memrand },
   { "rand", test_rand },
-  { "setup", test_setup, 0, &box_one },
+  { "setup", test_setup, Reedkiln_TODO, &box_one },
   { "skip", test_skip, Reedkiln_SKIP },
   { "todo", test_todo, Reedkiln_TODO },
   { "zeta", test_zeta },
@@ -66,6 +66,7 @@ int test_setup(void* box) {
     reedkiln_fail();
   return Reedkiln_OK;
 }
+
 
 /* test proper test skipping */
 int test_skip(void* p) {
