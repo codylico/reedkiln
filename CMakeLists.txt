@@ -10,6 +10,7 @@ endif(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 add_library(reedkiln STATIC "reedkiln.c" "reedkiln.h")
 target_compile_definitions(reedkiln
   INTERFACE "$<$<COMPILE_FEATURES:cxx_noexcept>:Reedkiln_UseNoexcept=1>"
+  "$<$<COMPILE_FEATURES:cxx_constexpr>:Reedkiln_UseConstexpr=1>"
   "$<$<COMPILE_FEATURES:cxx_variadic_templates,cxx_constexpr,cxx_static_assert>:Reedkiln_UseExpect=1>")
 
 add_subdirectory(tests)
