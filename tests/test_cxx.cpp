@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: Unlicense
 #include "../reedkiln.h"
+#include <string>
+#include <iostream>
 #include <cstring>
 
 class free_box {
@@ -40,6 +42,8 @@ public:
 };
 
 int test_cxx_raii(void*);
+int test_cxx_setup(void*);
+int test_cxx_setupfail(void*);
 int test_memrand(void*);
 int test_rand(void*);
 int test_skip(void*);
@@ -48,6 +52,10 @@ int test_zeta(void*);
 
 struct reedkiln_entry tests[] = {
   { "cxx/raii", test_cxx_raii, Reedkiln_TODO },
+  { "cxx/setup", test_cxx_setup, 0,
+    &reedkiln::cxx_box<std::string>::value },
+  { "cxx/setupfail", test_cxx_setupfail, Reedkiln_TODO,
+    &reedkiln::cxx_box<std::string>::value },
   { "memrand", test_memrand },
   { "rand", test_rand },
   { "skip", test_skip, Reedkiln_SKIP },
@@ -59,6 +67,22 @@ struct reedkiln_entry tests[] = {
 /* test resilience of random number generator */
 int test_cxx_raii(void* p) {
   free_box box(15);
+  reedkiln_fail();
+  return Reedkiln_OK;
+}
+/* test auto-generated box */
+int test_cxx_setup(void* p) {
+  std::string &str = *static_cast<std::string*>(p);
+  str.push_back('h');
+  str.append("ello,");
+  str += " world!";
+  std::cerr << "# " << str << std::endl;
+  return Reedkiln_OK;
+}
+/* test cleanup of auto-generated box */
+int test_cxx_setupfail(void* p) {
+  std::string &str = *static_cast<std::string*>(p);
+  str.append("oops.");
   reedkiln_fail();
   return Reedkiln_OK;
 }

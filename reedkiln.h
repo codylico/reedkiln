@@ -167,6 +167,28 @@ namespace reedkiln {
     }
   };
 
+  template <typename t>
+  struct cxx_box {
+  public:
+    using type = t;
+    static void* setup(void*) {
+      return new t;
+    }
+    static void teardown(void* p)
+#  if __cplusplus >= 201103L
+        noexcept
+#  else
+        throw()
+#  endif /*__cplusplus*/
+    {
+      delete static_cast<t*>(p);
+    }
+    static reedkiln_box const value;
+  };
+  template <typename t>
+  reedkiln_box const cxx_box<t>::value = { &setup, &teardown };
+
+
   inline
   int cxx_catcher(::reedkiln_cb cb, void* ptr) {
     try {
@@ -177,6 +199,7 @@ namespace reedkiln {
       /* let the tester break and */throw;
     }
   }
+
 
   inline
   void cxx_fail(void) {
