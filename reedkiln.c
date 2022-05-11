@@ -26,10 +26,30 @@
 #  define Reedkiln_Atomic_Put(c,v) \
       atomic_store_explicit((c),(v),memory_order_release)
 #  define Reedkiln_Atomic_Get(c) atomic_load_explicit((c),memory_order_acquire)
+#elif (defined _MSC_VER)
+#  include <intrin.h>
+#  include <limits.h>
+#  define Reedkiln_Atomic_tag
+#  if (ULONG_MAX == UINT_MAX)
+#    define Reedkiln_Atomic_Xchg(c,v) \
+        _InterlockedExchange((c), (v))
+#  else
+#    define Reedkiln_Atomic_Xchg(c,v) \
+        _InterlockedExchange16((c), (v))
+#  endif /*UINT_MAX*/
+static void Reedkiln_Atomic_Put(unsigned int volatile* c, unsigned int v) {
+  *c = v;
+}
+static unsigned int Reedkiln_Atomic_Get(unsigned int volatile* c) {
+  return *c;
+}
+#  define Reedkiln_Atomic
 #endif /*Reedkiln_Atomic*/
 #if defined(Reedkiln_Threads)
 #  include <threads.h>
 #  define Reedkiln_Thread_local _Thread_local
+#elif (defined _MSC_VER)
+#  define Reedkiln_Thread_local __declspec(thread)
 #else
 #  define Reedkiln_Thread_local
 #endif /*Reedkiln_Threads*/
