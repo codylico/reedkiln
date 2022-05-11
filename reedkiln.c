@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <setjmp.h>
+#include <time.h>
 
 static size_t reedkiln_entry_count(struct reedkiln_entry const* t);
 static char const* reedkiln_entry_directive(struct reedkiln_entry const* t);
@@ -117,12 +118,22 @@ void reedkiln_print_bail(char const* reason) {
 
 int reedkiln_run_test(reedkiln_cb cb, void* p) {
   int res;
+#if defined(Reedkiln_Atomic)
   Reedkiln_Atomic_Put(&reedkiln_next_status, Reedkiln_OK);
+#else
+  reedkiln_next_status = Reedkiln_OK;
+#endif
   res = (*reedkiln_vtable_c.catch_cb)(cb, p);
   reedkiln_next_jmp.active = 0u;
+#if defined(Reedkiln_Atomic)
   return res == Reedkiln_OK
     ? Reedkiln_Atomic_Get(&reedkiln_next_status)
     : res;
+#else
+  return res == Reedkiln_OK
+    ? reedkiln_next_status
+    : res;
+#endif /*Reedkiln_Atomic*/
 }
 
 int reedkiln_setup_redirect(void* d) {
