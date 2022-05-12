@@ -114,6 +114,22 @@ unsigned int reedkiln_rand(void);
 void reedkiln_memrand(void* b, reedkiln_size sz);
 
 /**
+ * @brief Report a fail if a condition is false (zero).
+ * @param val zero to fail, nonzero otherwise
+ * @param text a description of what (may have) failed
+ * @param file name of source file
+ * @param line line number of related source code
+ * @note Calls reedkiln_fail.
+ */
+void reedkiln_assert_ex
+  (int val, char const* text, char const* file, unsigned long int line);
+
+#if !(defined Reedkiln_NoAssert)
+#define reedkiln_assert(x) \
+    reedkiln_assert_ex((x), #x, __FILE__, __LINE__)
+#endif /*Reedkiln_NoAssert*/
+
+/**
  * @brief Run some tests.
  * @param t array of tests
  * @param argc from `main`

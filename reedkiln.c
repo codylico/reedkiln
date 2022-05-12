@@ -111,6 +111,16 @@ void reedkiln_fail(void) {
   abort()/* in case the above doesn't work */;
 }
 
+void reedkiln_assert_ex
+  (int val, char const* text, char const* file, unsigned long int line)
+{
+  if (!val) {
+    fprintf(stdout, "## assert %s:%lu: %s\n", file, line, text);
+    reedkiln_fail();
+  }
+  return;
+}
+
 void reedkiln_bail_out(char const* reason) {
 #if defined(Reedkiln_Atomic)
   Reedkiln_Atomic_Put(&reedkiln_next_status, Reedkiln_NOT_OK);

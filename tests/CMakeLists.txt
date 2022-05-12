@@ -44,5 +44,10 @@ if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
   add_test(NAME "reedkiln::bail" COMMAND reedkiln_test_bail)
   set_tests_properties("reedkiln::bail"
     PROPERTIES WILL_FAIL TRUE)
+
+  add_executable(reedkiln_test_assert "test_assert.c")
+  target_link_libraries(reedkiln_test_assert
+    PRIVATE reedkiln)
+  add_test(NAME "reedkiln::assert" COMMAND reedkiln_test_assert)
 endif (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
 
