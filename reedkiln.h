@@ -214,7 +214,7 @@ namespace reedkiln {
 #  if (defined Reedkiln_UseConstexpr)
     static constexpr reedkiln_box const* ptr = &value;
 #  else
-    static reedkiln_box const* ptr;
+    static reedkiln_box const* const ptr;
 #  endif /*Reedkiln_UseConstexpr*/
   };
   template <typename t>
