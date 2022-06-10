@@ -42,6 +42,7 @@ public:
 };
 
 int test_cxx_raii(void*);
+int test_cxx_assert(void*);
 int test_cxx_setup(void*);
 int test_cxx_setupfail(void*);
 int test_memrand(void*);
@@ -52,6 +53,8 @@ int test_zeta(void*);
 
 struct reedkiln_entry tests[] = {
   { "cxx/raii", test_cxx_raii, Reedkiln_TODO },
+  { "cxx/assert", test_cxx_assert, Reedkiln_TODO,
+    reedkiln::cxx_box<std::string>::ptr },
   { "cxx/setup", test_cxx_setup, 0,
     reedkiln::cxx_box<std::string>::ptr },
   { "cxx/setupfail", test_cxx_setupfail, Reedkiln_TODO,
@@ -68,6 +71,15 @@ struct reedkiln_entry tests[] = {
 int test_cxx_raii(void* p) {
   free_box box(15);
   reedkiln_fail();
+  return Reedkiln_OK;
+}
+/* test cleanup with assert */
+int test_cxx_assert(void* p) {
+  std::string &str = *static_cast<std::string*>(p);
+  str.push_back('h');
+  str.append("ello,");
+  str += " world!";
+  reedkiln_assert(str.size() != 13);
   return Reedkiln_OK;
 }
 /* test auto-generated box */
