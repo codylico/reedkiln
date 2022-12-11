@@ -130,7 +130,7 @@ void reedkiln_assert_ex
 
 #if !(defined Reedkiln_NoAssert)
 #define reedkiln_assert(x) \
-    reedkiln_assert_ex((x), #x, __FILE__, __LINE__)
+    reedkiln_assert_ex(((x)?1:0), #x, __FILE__, __LINE__)
 #endif /*Reedkiln_NoAssert*/
 
 /**

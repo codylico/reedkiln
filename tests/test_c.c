@@ -12,6 +12,8 @@ int test_setup(void*);
 int test_skip(void*);
 int test_todo(void*);
 int test_todo_ignore(void*);
+int test_explicit_false(void*);
+int test_explicit_true(void*);
 int test_zeta(void*);
 
 void* setup_one(void*);
@@ -27,6 +29,8 @@ struct reedkiln_entry tests[] = {
   { "todo", test_todo, Reedkiln_TODO },
   { "ignore", test_ignore, 0, &box_one },
   { "todo_ignore", test_todo_ignore, Reedkiln_TODO },
+  { "explicit_false", test_explicit_false, Reedkiln_TODO },
+  { "explicit_true", test_explicit_true },
   { "zeta", test_zeta },
   { NULL, NULL }
 };
@@ -92,6 +96,23 @@ int test_todo(void* p) {
 /* test for expectation of failure that gets ignored */
 int test_todo_ignore(void* p) {
   return Reedkiln_IGNORE;
+}
+
+/* test for assert conversion to Boolean false */
+int test_explicit_false(void* p) {
+  reedkiln_assert(NULL);
+  return Reedkiln_OK;
+}
+
+/* test for assert conversion to Boolean true */
+int test_explicit_true(void* p) {
+  reedkiln_assert(&tests);
+  reedkiln_assert(&test_explicit_true);
+  reedkiln_assert(3.14159);
+  reedkiln_assert("a string");
+  reedkiln_assert('5');
+  reedkiln_assert(0.5);
+  return Reedkiln_OK;
 }
 
 /* last test to run */
