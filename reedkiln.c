@@ -364,10 +364,13 @@ int reedkiln_main
     struct reedkiln_entry const* test = t+test_i;
     char const* result_text;
     char const* direct_text = reedkiln_entry_directive(test);
+    int want_skip_tf = (!reedkiln_prefix_match(test->name, testname_prefix));
     int skip_tf = ((test->flags & Reedkiln_SKIP)!= 0)
-        || (!reedkiln_prefix_match(test->name, testname_prefix));
+        || want_skip_tf;
     int res = 0;
-    if (!skip_tf) {
+    if (want_skip_tf) {
+      direct_text = " # SKIP by request";
+    } else if (!skip_tf) {
       struct reedkiln_box const* box = test->box;
       void* box_item = NULL;
       int box_called = 0;
@@ -394,6 +397,10 @@ int reedkiln_main
     switch (res) {
     case 0:
       result_text = "ok"; break;
+    case Reedkiln_IGNORE:
+      result_text = "ok";
+      direct_text = " # SKIP at runtime";
+      break;
     default:
       if (!(test->flags & Reedkiln_TODO))
         total_res = EXIT_FAILURE;

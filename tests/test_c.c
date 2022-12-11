@@ -5,11 +5,13 @@
 #include <stdlib.h>
 
 
+int test_ignore(void*);
 int test_memrand(void*);
 int test_rand(void*);
 int test_setup(void*);
 int test_skip(void*);
 int test_todo(void*);
+int test_todo_ignore(void*);
 int test_zeta(void*);
 
 void* setup_one(void*);
@@ -23,9 +25,17 @@ struct reedkiln_entry tests[] = {
   { "setup", test_setup, Reedkiln_TODO, &box_one },
   { "skip", test_skip, Reedkiln_SKIP },
   { "todo", test_todo, Reedkiln_TODO },
+  { "ignore", test_ignore, 0, &box_one },
+  { "todo_ignore", test_todo_ignore, Reedkiln_TODO },
   { "zeta", test_zeta },
   { NULL, NULL }
 };
+
+
+/* test ingore result */
+int test_ignore(void* p) {
+  return Reedkiln_IGNORE;
+}
 
 /* test resilience of random number generator */
 int test_memrand(void* p) {
@@ -77,6 +87,11 @@ int test_skip(void* p) {
 /* test for expectation of failure */
 int test_todo(void* p) {
   return Reedkiln_NOT_OK;
+}
+
+/* test for expectation of failure that gets ignored */
+int test_todo_ignore(void* p) {
+  return Reedkiln_IGNORE;
 }
 
 /* last test to run */

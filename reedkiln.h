@@ -79,9 +79,13 @@ struct reedkiln_entry {
 typedef struct reedkiln_entry reedkiln_entry;
 
 enum reedkiln_result {
+  /** @brief "ok" code from TAP. */
   Reedkiln_OK = 0,
+  /** @brief "not ok" code from TAP. */
   Reedkiln_NOT_OK = 1,
-  Reedkiln_THROWS = 2
+  Reedkiln_THROWS = 2,
+  /** @brief Count this run as a skip at runtime. */
+  Reedkiln_IGNORE = 3
 };
 
 /**
