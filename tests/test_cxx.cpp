@@ -45,7 +45,7 @@ private:
   int x;
 public:
   seven_checker(int a) : x(a) {}
-  explicit operator bool() const noexcept {
+  operator bool() const {
     return x >= 7;
   }
 };
