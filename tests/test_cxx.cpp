@@ -40,6 +40,15 @@ public:
     return *this;
   }
 };
+class seven_checker {
+private:
+  int x;
+public:
+  seven_checker(int a) : x(a) {}
+  operator bool() const {
+    return x >= 7;
+  }
+};
 
 int test_cxx_raii(void*);
 int test_cxx_assert(void*);
@@ -49,6 +58,8 @@ int test_memrand(void*);
 int test_rand(void*);
 int test_skip(void*);
 int test_todo(void*);
+int test_cxx_explicit_false(void*);
+int test_cxx_explicit_true(void*);
 int test_zeta(void*);
 
 struct reedkiln_entry tests[] = {
@@ -63,6 +74,8 @@ struct reedkiln_entry tests[] = {
   { "rand", test_rand },
   { "skip", test_skip, Reedkiln_SKIP },
   { "todo", test_todo, Reedkiln_TODO },
+  { "cxx/explicit_true", test_cxx_explicit_true },
+  { "cxx/explicit_false", test_cxx_explicit_false, Reedkiln_TODO },
   { "zeta", test_zeta },
   { NULL, NULL }
 };
@@ -122,6 +135,20 @@ int test_rand(void* p) {
 int test_skip(void* p) {
   reedkiln_fail();
   /* [[unreachable]] */return Reedkiln_NOT_OK;
+}
+
+/* test proper assert bool conversion */
+int test_cxx_explicit_false(void* p) {
+  seven_checker x(6 - reedkiln_rand()%16);
+  reedkiln_assert(x);
+  return Reedkiln_OK;
+}
+int test_cxx_explicit_true(void* p) {
+  seven_checker x(reedkiln_rand()%16 + 7);
+  reedkiln_assert(x);
+  reedkiln_assert(&x);
+  reedkiln_assert(std::cout);
+  return Reedkiln_OK;
 }
 
 /* test for expectation of failure */
