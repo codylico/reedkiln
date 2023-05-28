@@ -140,6 +140,8 @@ void reedkiln_assert_ex
  * @param argv from `main`
  * @param p to pass to the callbacks
  * @return an exit code
+ * @note This library assumes at most one `reedkiln_main` per process
+ *   is running at a time.
  */
 int reedkiln_main
     (struct reedkiln_entry const* t, int argc, char **argv, void* p);
