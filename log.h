@@ -8,6 +8,20 @@
 
 #include "reedkiln.h"
 
+#if (defined __GNUC__)
+#  define Reedkiln_attrPrintf(y,z) __attribute__((format(printf,y,z)))
+#else
+/** @brief Macro for activating `printf` warnings. */
+#  define Reedkiln_attrPrintf(y,z)
+#endif /*__GNUC__*/
+
+#if (defined _MSC_VER) && (_MSC_VER >= 1910)
+#  include <sal.h>
+#  define Reedkiln_argPrintf _Printf_format_string_
+#else
+#  define Reedkiln_argPrintf
+#endif /*_MSC_VER*/
+
 #if defined(__cplusplus)
 extern "C" {
 #endif /*__cplusplus*/
@@ -20,6 +34,14 @@ extern "C" {
  * @return the number of bytes actually written
  */
 reedkiln_size reedkiln_log_write(void const* buffer, reedkiln_size count);
+/**
+ * @brief Writes formatted output to the log buffer.
+ * @param format printf-style format
+ * @return the number of bytes actually written
+ */
+reedkiln_size reedkiln_log_printf(Reedkiln_argPrintf char const* format, ...)
+  Reedkiln_attrPrintf(1,2);
+
 
 #if defined(__cplusplus)
 };

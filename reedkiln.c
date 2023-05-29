@@ -62,8 +62,16 @@ static unsigned int Reedkiln_Atomic_Get(unsigned int volatile* c) {
 #include <time.h>
 #include <ctype.h>
 #include <limits.h>
+#include <float.h>
+#include <stdarg.h>
 
 struct reedkiln_logbuf;
+
+#if defined(ULLONG_MAX)
+typedef unsigned long long reedkiln_intmax;
+#else
+typedef unsigned long reedkiln_intmax;
+#endif /*ULLONG_MAX*/
 
 static size_t reedkiln_entry_count(struct reedkiln_entry const* t);
 static char const* reedkiln_entry_directive(struct reedkiln_entry const* t);
@@ -82,6 +90,52 @@ static void reedkiln_log_reset(void);
 static unsigned int reedkiln_log_nextpos
   (struct reedkiln_logbuf* ptr, reedkiln_size n);
 static void reedkiln_log_escape(unsigned char const* data, size_t n, FILE* f);
+static int reedkiln_log_setline(char const* name, unsigned long int lineno);
+static int reedkiln_isslash(int ch);
+static int reedkiln_log_vsnprintf
+  (unsigned char* output, size_t sz, char const* format, va_list ap);
+static int reedkiln_log_itox
+  (unsigned char* output, reedkiln_intmax value);
+static int reedkiln_log_itoa
+  (unsigned char* output, reedkiln_intmax value);
+static int reedkiln_log_dtox
+  (unsigned char* output, long double value);
+static unsigned int reedkiln_log_count_str
+  (unsigned char* output, size_t sz, unsigned count, char const* str);
+static unsigned int reedkiln_log_count_ncat
+  ( unsigned char* output, size_t sz, unsigned count,
+    unsigned precision, char const* str);
+static unsigned int reedkiln_log_count_strn
+  ( unsigned char* output, size_t sz, unsigned count,
+    unsigned int slen, char const* str);
+static unsigned int reedkiln_log_count_revn
+  ( unsigned char* output, size_t sz, unsigned count,
+    int slen, unsigned char const* str);
+
+struct reedkiln_log_attr {
+  unsigned char value;
+  unsigned char width;
+  unsigned char prec;
+};
+static
+struct reedkiln_log_attr reedkiln_log_adjust_type(char const** p);
+
+enum reedkiln_const {
+  /** @note Max length of encoding a wchar_t to UTF-8 */
+  Reedkiln_UTF8Max = 6,
+  /** @note Max length of formatting a hexadecimal integer */
+  Reedkiln_ItoXMax = (sizeof(reedkiln_intmax)*CHAR_BIT+3)/4,
+  /** @note Max length of formatting a decimal integer */
+  Reedkiln_ItoAMax = (sizeof(reedkiln_intmax)*CHAR_BIT+3)/3,
+  /** @note Max length of formatting a hexadecimal integer */
+  Reedkiln_DtoXMax = (LDBL_DIG)+3+Reedkiln_ItoAMax,
+  /** @note Approximate base-2 minimum long double exponent */
+  Reedkiln_DMinExp = (LDBL_MIN_10_EXP - DBL_DIG) * 4,
+  /** @note Approximate base-2 maximum long double exponent */
+  Reedkiln_DMaxExp = (LDBL_MAX_10_EXP) * 4,
+  /** @note Bias for length modifier */
+  Reedkiln_Bias = 128u
+};
 
 static struct reedkiln_vtable reedkiln_vtable_c = {
   &reedkiln_passthrough,
@@ -342,12 +396,412 @@ reedkiln_size reedkiln_log_write(void const* buffer, reedkiln_size count) {
   }
 }
 
+reedkiln_size reedkiln_log_printf(char const* format, ...) {
+  unsigned int count;
+#if defined(Reedkiln_Atomic)
+  unsigned int const swap_index = Reedkiln_Atomic_Get(&reedkiln_log_index)%2u;
+#else
+  unsigned int const swap_index = reedkiln_log_index%2u;
+#endif /*Reedkiln_Atomic*/
+  struct reedkiln_logbuf* const ptr = reedkiln_log_buffers+swap_index;
+  unsigned int src;
+  /* calculate size */{
+    va_list ap;
+    int len;
+    va_start(ap, format);
+    len = reedkiln_log_vsnprintf(NULL, 0, format, ap);
+    if (len == -1)
+      return 0;
+    va_end(ap);
+    count = len+1u;
+  }
+  /* allocate buffer */{
+    src = reedkiln_log_nextpos(ptr, count);
+    if (src == UINT_MAX)
+      return 0;
+  }
+  /* write (possibly truncated) content to log buffer */{
+    size_t const put_length = (size_t)((reedkiln_log_size - src < count)
+       ? reedkiln_log_size - src : count);
+    va_list ap;
+    va_start(ap, format);
+    (void)reedkiln_log_vsnprintf(ptr->data, put_length, format, ap);
+    va_end(ap);
+    return (unsigned int)put_length;
+  }
+}
+
+struct reedkiln_log_attr reedkiln_log_adjust_type(char const** p) {
+  struct reedkiln_log_attr value = {Reedkiln_Bias};
+  /* skip over the initial % */
+  (*p) += 1;
+  /* skip flags */
+  for (; **p && memchr("0-+ #",**p,5); (*p) += 1)
+    continue;
+  /* width */
+  if (**p == '*') {
+    value.width = 255;
+    (*p) += 1;
+  } else for (; **p >= '0' && **p <= '9'; (*p) += 1)
+    value.width = (value.width * 10u + (**p - '0'))&127u;
+  if (**p == '.') {
+    (*p) += 1;
+    if (**p == '*') {
+      value.prec = 255;
+      (*p) += 1;
+    } else for (; **p >= '0' && **p <= '9'; (*p) += 1)
+      value.prec = (value.prec * 10u + (**p - '0'))&127u;
+  }
+  /* handle attributes */
+  for (; **p; (*p) += 1) {
+    char const ch = **p;
+    if (ch == 'h')
+      value.value -= 1;
+    else if (ch == 'l')
+      value.value += 1;
+    else if (ch == 'z')
+      value.value = 5 + Reedkiln_Bias;
+    else if (ch == 'L')
+      value.value = 10 + Reedkiln_Bias;
+    else
+      break;
+  }
+  return value;
+}
+
+int reedkiln_log_itox
+  (unsigned char* output, reedkiln_intmax value)
+{
+  char const xdigits[] = "0123456789abcdef";
+  int i;
+  if (value == 0) {
+    output[0] = '0';
+    return 1;
+  }
+  for (i = 0; value > 0 && i < Reedkiln_ItoXMax; value >>= 4, ++i) {
+    output[i] = xdigits[value&15u];
+  }
+  return i;
+}
+int reedkiln_log_itoa
+  (unsigned char* output, reedkiln_intmax value)
+{
+  int i;
+  if (value == 0) {
+    output[0] = '0';
+    return 1;
+  }
+  for (i = 0; value > 0 && i < Reedkiln_ItoAMax; value /= 10, ++i) {
+    output[i] = (value%10u) + '0';
+  }
+  return i;
+}
+int reedkiln_log_dtox
+  (unsigned char* output, long double value)
+{
+  char const xdigits[] = "0123456789abcdef";
+  int i = 0;
+  int expon = 0;
+  if (value == 0.0) {
+    output[0] = '0';
+    return 1;
+  }
+  /* find the exponent */
+  if (value < 1.0) {
+    for (expon = 0; expon > Reedkiln_DMinExp; expon -= 4) {
+      if (value >= 1.0)
+        break;
+      else
+        value *= 16.0;
+    }
+  } else {
+    for (expon = 0; expon < Reedkiln_DMaxExp; expon += 4) {
+      if (value < 16.0)
+        break;
+      else
+        value *= 0.0625;
+    }
+  }
+  for (i = 0; value > 0.0 && i < (LDBL_DIG); ++i) {
+    int const digit = (int)value;
+    value = (value - digit)*16.0;
+    output[i] = xdigits[digit&15u];
+    if (i == 0 && value > 0.0)
+      output[++i] = '.';
+  }
+  if (expon != 0) {
+    int const expsign = (expon < 0);
+    int const expstart = i;
+    i += reedkiln_log_itoa(output+i, abs(expon));
+    if (expsign)
+      output[i++] = '-';
+    output[i++] = 'p';
+    /* reverse */{
+      int const half = (i - expstart)/2;
+      int j;
+      for (j = 0; j < half; ++j) {
+        unsigned char const tmp = output[expstart + j];
+        output[expstart + j] = output[i - j - 1];
+        output[i - j - 1] = tmp;
+      }
+    }
+  }
+  return i;
+}
+
+unsigned int reedkiln_log_count_ncat
+  ( unsigned char* output, size_t sz, unsigned count,
+    unsigned precision, char const* str)
+{
+  unsigned int j;
+  for (j = 0; j < precision && str[j]; ++j) {
+    if (count < sz)
+      output[count] = str[j];
+    count += 1;
+  }
+  return count;
+}
+unsigned int reedkiln_log_count_str
+  (unsigned char* output, size_t sz, unsigned count, char const* str)
+{
+  for (; *str; ++str) {
+    if (count < sz)
+      output[count] = *str;
+    count += 1;
+  }
+  return count;
+}
+unsigned int reedkiln_log_count_strn
+  ( unsigned char* output, size_t sz, unsigned count,
+    unsigned int slen, char const* str)
+{
+  unsigned int i;
+  for (i = 0; i < slen; ++i) {
+    if (count < sz)
+      output[count] = str[i];
+    count += 1;
+  }
+  return count;
+}
+
+unsigned int reedkiln_log_count_revn
+  ( unsigned char* output, size_t sz, unsigned count,
+    int slen, unsigned char const* str)
+{
+  int j;
+  for (j = slen-1; j >= 0; --j) {
+    if (count < sz)
+      output[count] = str[j];
+    count += 1;
+  }
+  return count;
+}
+
+int reedkiln_log_vsnprintf
+  (unsigned char* output, size_t sz, char const* format, va_list ap)
+{
+  unsigned int count = 0;
+#if (defined __STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+  count = vsnprintf(output, sz, format, ap);
+#else
+  char const* p;
+  for (p = format; *p; ++p) {
+    if (*p == '%') {
+      struct reedkiln_log_attr attr = reedkiln_log_adjust_type(&p);
+      int const type_adjust = (int)(attr.value - Reedkiln_Bias);
+      unsigned int precision = 0;
+      if (!*p)
+        break;
+      if (attr.width == 255u)
+        (void)va_arg(ap, int);
+      if (attr.prec == 255u) {
+        int const prec = va_arg(ap, int);
+        precision = (prec > 0 ? prec : 0);
+      } else precision = attr.prec;
+      switch (*p) {
+      case 's':
+        if (type_adjust > 0) {
+          wchar_t const* str = va_arg(ap, wchar_t const*);
+          unsigned char utf8s[Reedkiln_UTF8Max] = {0};
+          unsigned int j = 0;
+          if (!str) {
+            count = reedkiln_log_count_str(output, sz, count, "(null)");
+          } else for (; *str && (!precision || j < precision); ++str, ++j) {
+            wchar_t ch = *str;
+            int utf8len = 0;
+            /* assume utf-8 for a simpler re-entrant algorithm */{
+              unsigned int last_mask = 0x1F;
+              if (ch <= 0x7f) {
+                utf8s[0] = (unsigned char)ch;
+                utf8len = 1;
+              } else {
+                for (utf8len = 0; utf8len < 6 && ch > last_mask;
+                  last_mask >>= 1, ++utf8len, ch >>= 6)
+                {
+                  utf8s[utf8len] = (0x80 | (ch & 0x3f));
+                }
+                if (utf8len < 6) {
+                  utf8s[utf8len] = ((~last_mask)<<2) | ch;
+                  utf8len += 1u;
+                } else {
+                  utf8s[0] = 0xBD;
+                  utf8s[1] = 0xBF;
+                  utf8s[2] = 0xEF;
+                  utf8len = 3;
+                }
+              }
+            }
+            count = reedkiln_log_count_revn
+                (output, sz, count, utf8len, utf8s);
+          }
+        } else {
+          char const* str = va_arg(ap, char const*);
+          if (precision && str)
+            count = reedkiln_log_count_ncat
+                (output, sz, count, precision, str?str:"(null)");
+          else
+            count = reedkiln_log_count_str(output, sz, count, str?str:"(null)");
+        } break;
+      case 'p':
+        if (sizeof(void*) > sizeof(reedkiln_intmax)) {
+          void const* const value = va_arg(ap, void const*);
+          char const* str = (value ? "(nonnull)" : "(null)");
+          count = reedkiln_log_count_str(output, sz, count, str);
+        }
+        /* [[fallthrough]] */;
+      case 'X':
+      case 'x':
+        {
+          reedkiln_intmax value;
+          char ibuffer[Reedkiln_ItoXMax];
+          int ilen;
+          if (*p == 'p')
+            value = (reedkiln_intmax)va_arg(ap, void const*);
+          else if (type_adjust <= -2)
+            value = va_arg(ap, unsigned int)&UCHAR_MAX;
+          else if (type_adjust == -1)
+            value = va_arg(ap, unsigned int)&USHRT_MAX;
+          else if (type_adjust == 0)
+            value = va_arg(ap, unsigned int);
+          else if (type_adjust == 1)
+            value = va_arg(ap, unsigned long);
+          else if (type_adjust >= 5)
+            value = (reedkiln_intmax)va_arg(ap, size_t);
+          else if (type_adjust >= 2) {
+#if defined(ULLONG_MAX)
+            value = va_arg(ap, unsigned long long);
+#else
+            /* uh oh */
+            count = UINT_MAX;
+            break;
+#endif /*ULLONG_MAX*/
+          }
+          ilen = reedkiln_log_itox(ibuffer, value);
+          count = reedkiln_log_count_revn(output, sz, count, ilen, ibuffer);
+        } break;
+      case 'i':
+      case 'd':
+        {
+          reedkiln_intmax value;
+          reedkiln_intmax valuemax;
+          char ibuffer[Reedkiln_ItoXMax];
+          int ilen;
+          if (type_adjust <= -2) {
+            value = va_arg(ap, unsigned int)&UCHAR_MAX;
+            valuemax = (reedkiln_intmax)(UCHAR_MAX);
+          } else if (type_adjust == -1) {
+            value = va_arg(ap, unsigned int)&USHRT_MAX;
+            valuemax = (reedkiln_intmax)(USHRT_MAX);
+          } else if (type_adjust == 0) {
+            value = va_arg(ap, unsigned int);
+            valuemax = (reedkiln_intmax)(UINT_MAX);
+          } else if (type_adjust == 1) {
+            value = va_arg(ap, unsigned long);
+            valuemax = (reedkiln_intmax)(ULONG_MAX);
+          } else if (type_adjust >= 5) {
+            value = (reedkiln_intmax)va_arg(ap, size_t);
+            valuemax = (reedkiln_intmax)(~(size_t)0);
+          } else if (type_adjust >= 2) {
+#if defined(ULLONG_MAX)
+            value = va_arg(ap, unsigned long long);
+            valuemax = (ULLONG_MAX);
+#else
+            /* uh oh */
+            count = UINT_MAX;
+            break;
+#endif /*ULLONG_MAX*/
+          }
+          if (value & ~(valuemax>>1)) {
+            value = ((~value) + 1u) & valuemax;
+            count = reedkiln_log_count_strn(output, sz, count, 1,"-");
+          }
+          ilen = reedkiln_log_itoa(ibuffer, value);
+          count = reedkiln_log_count_revn(output, sz, count, ilen, ibuffer);
+        } break;
+      case 'a':
+      case 'A':
+        {
+          long double value;
+          char dbuffer[Reedkiln_DtoXMax];
+          int dlen = 0;
+          char sign = 0;
+          char prefix = 1;
+          if (type_adjust >= 10)
+            value = va_arg(ap, long double);
+          else
+            value = va_arg(ap, double);
+          if (value != value) {
+            memcpy(dbuffer, "nan", 3);
+            dlen = 3;
+            prefix = 0;
+          } else {
+            if (value < 0) {
+              sign = 1;
+              value = -value;
+            }
+            if (value/(FLT_RADIX) == value && value > 0.0) {
+              memcpy(dbuffer, "inf", 3);
+              dlen = 3;
+              prefix = 0;
+            } else {
+              dlen = reedkiln_log_dtox(dbuffer, value);
+            }
+          }
+          /* post the bytes */{
+            int j;
+            if (sign)
+              count = reedkiln_log_count_strn(output, sz, count, 1,"-");
+            if (prefix)
+              count = reedkiln_log_count_strn(output, sz, count, 2,"0x");
+            count = reedkiln_log_count_strn
+              (output, sz, count, dlen, dbuffer);
+          }
+        } break;
+      case '%':
+      default:
+        count = reedkiln_log_count_strn(output, sz, count, 1, "%");
+        break;
+      }
+    } else {
+      count = reedkiln_log_count_strn(output, sz, count, 1,p);
+    }
+  }
+  if (count < sz)
+    output[count] = '\0';
+  else if (sz)
+    output[sz-1u] = '\0';
+#endif
+  return (count >= INT_MAX) ? -1 : (int)count;
+}
+
 void reedkiln_log_escape(unsigned char const* data, size_t n, FILE* f) {
   size_t i;
   int was_digit = 0;
   for (i = 0; i < n; ++i) {
     unsigned char const ch = data[i];
     int const previous_digit = was_digit;
+    if (!ch)
+      continue;
     was_digit = 0;
     if (ch == '"')
       fputs("\\\"", f);
