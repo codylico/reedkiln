@@ -60,6 +60,10 @@ static unsigned int Reedkiln_Atomic_Get(unsigned int volatile* c) {
 #include <string.h>
 #include <setjmp.h>
 #include <time.h>
+#include <ctype.h>
+#include <limits.h>
+
+struct reedkiln_logbuf;
 
 static size_t reedkiln_entry_count(struct reedkiln_entry const* t);
 static char const* reedkiln_entry_directive(struct reedkiln_entry const* t);
@@ -73,6 +77,11 @@ static int reedkiln_setup_redirect(void* d);
 static int reedkiln_run_setup(reedkiln_setup_cb cb, void* p, void** out);
 static unsigned int reedkiln_default_seed(void);
 static void reedkiln_print_bail(char const* reason);
+static unsigned int reedkiln_log_swap(void);
+static void reedkiln_log_reset(void);
+static unsigned int reedkiln_log_nextpos
+  (struct reedkiln_logbuf* ptr, reedkiln_size n);
+static void reedkiln_log_escape(unsigned char const* data, size_t n, FILE* f);
 
 static struct reedkiln_vtable reedkiln_vtable_c = {
   &reedkiln_passthrough,
@@ -82,6 +91,15 @@ static struct reedkiln_vtable reedkiln_vtable_c = {
 struct reedkiln_jmp {
   unsigned int active;
   jmp_buf buf;
+};
+
+struct reedkiln_logbuf {
+#if defined(Reedkiln_Atomic)
+  Reedkiln_Atomic_tag unsigned int pos;
+#else
+  unsigned int pos;
+#endif /*Reedkiln_Atomic*/
+  unsigned char* data;
 };
 
 struct reedkiln_setup_data {
@@ -244,6 +262,122 @@ void reedkiln_memrand(void* b, reedkiln_size sz) {
 }
 /* END   random stuff */
 
+/* BEGIN log buffer */
+static unsigned char reedkiln_logbuf_default[256] = { 0 };
+static struct reedkiln_logbuf reedkiln_log_buffers[2] = {
+  { 0, reedkiln_logbuf_default },
+  { 0, reedkiln_logbuf_default+sizeof(reedkiln_logbuf_default)/2u }
+};
+static unsigned int reedkiln_log_size = sizeof(reedkiln_logbuf_default)/2u;
+#if defined(Reedkiln_Atomic)
+static Reedkiln_Atomic_tag unsigned int reedkiln_log_index = 0u;
+#else
+static unsigned int reedkiln_log_index = 0u;
+#endif /*Reedkiln_Atomic*/
+
+void reedkiln_log_reset(void) {
+#if defined(Reedkiln_Atomic)
+  unsigned int const swap_index = Reedkiln_Atomic_Get(&reedkiln_log_index)%2u;
+#else
+  unsigned int const swap_index = reedkiln_log_index%2u;
+#endif /*Reedkiln_Atomic*/
+  struct reedkiln_logbuf* const ptr = reedkiln_log_buffers+swap_index;
+#if defined(Reedkiln_Atomic)
+  Reedkiln_Atomic_Put(&ptr->pos, 0);
+#else
+  ptr->pos = 0;
+#endif /*Reedkiln_Atomic*/
+  return;
+}
+
+unsigned int reedkiln_log_swap(void) {
+#if defined(Reedkiln_Atomic)
+  unsigned int const src = Reedkiln_Atomic_Get(&reedkiln_log_index);
+  Reedkiln_Atomic_Put(&reedkiln_log_index, src+1);
+  return src%2u;
+#else
+  return (reedkiln_log_swap++)%2u;
+#endif /*Reedkiln_Atomic*/
+}
+
+unsigned int reedkiln_log_nextpos
+  (struct reedkiln_logbuf* ptr, reedkiln_size n)
+{
+  unsigned int const top =
+     (n > reedkiln_log_size) ? 0 : (unsigned int)(reedkiln_log_size - n);
+#if defined(Reedkiln_Atomic)
+  unsigned int src = Reedkiln_Atomic_Get(&ptr->pos);
+  unsigned int in, out;
+  do {
+    if (src >= reedkiln_log_size)
+      return UINT_MAX;
+    in = src;
+    out = (in >= top ? reedkiln_log_size : (unsigned)(in + n));
+  } while ((src = Reedkiln_Atomic_Xchg(&ptr->pos,out)) != in);
+#else
+  unsigned int const in = ptr->pos;
+  ptr->pos = (in >= top ? reedkiln_log_size : (unsigned)(in + n));
+#endif /*Reedkiln_Atomic*/
+  return in;
+}
+
+reedkiln_size reedkiln_log_write(void const* buffer, reedkiln_size count) {
+  unsigned int const n =
+    (count >= (UINT_MAX/2)) ? (UINT_MAX/2) : ((unsigned int)count);
+  unsigned char const* data = (unsigned char const*)buffer;
+#if defined(Reedkiln_Atomic)
+  unsigned int const swap_index = Reedkiln_Atomic_Get(&reedkiln_log_index)%2u;
+#else
+  unsigned int const swap_index = reedkiln_log_index%2u;
+#endif /*Reedkiln_Atomic*/
+  struct reedkiln_logbuf* const ptr = reedkiln_log_buffers+swap_index;
+  unsigned int const src = reedkiln_log_nextpos(ptr, count);
+  if (src == UINT_MAX)
+    return 0;
+  /* write (possibly truncated) content to log buffer */{
+    size_t const put_length =
+      (size_t)((reedkiln_log_size - src < n) ? reedkiln_log_size - src : n);
+    memcpy(ptr->data + src, buffer, put_length);
+    return put_length;
+  }
+}
+
+void reedkiln_log_escape(unsigned char const* data, size_t n, FILE* f) {
+  size_t i;
+  int was_digit = 0;
+  for (i = 0; i < n; ++i) {
+    unsigned char const ch = data[i];
+    int const previous_digit = was_digit;
+    was_digit = 0;
+    if (ch == '"')
+      fputs("\\\"", f);
+    else if (previous_digit && isxdigit(ch)) {
+      fprintf(f, "\\x%02x", ch&255u);
+      was_digit = 1;
+    } else if (isgraph(ch))
+      fputc(ch, f);
+    else switch (ch) {
+    case ' ':
+      fputc(' ', f); break;
+    case '\n':
+      fputs("\\n", f); break;
+    case '\t':
+      fputs("\\t", f); break;
+    case '\b':
+      fputs("\\b", f); break;
+    case '\f':
+      fputs("\\f", f); break;
+    case '\v':
+      fputs("\\v", f); break;
+    case '\a':
+      fputs("\\a", f); break;
+    default:
+      fprintf(f, "\\x%02x", ch&255u); was_digit = 1; break;
+    }
+  }
+}
+/* END   log buffer */
+
 /* BEGIN error jump */
 int reedkiln_passthrough(reedkiln_cb cb, void* ptr) {
   if (setjmp(reedkiln_next_jmp.buf) != 0) {
@@ -374,7 +508,9 @@ int reedkiln_main
       struct reedkiln_box const* box = test->box;
       void* box_item = NULL;
       int box_called = 0;
+      unsigned int log_index;
       reedkiln_srand(rand_seed);
+      reedkiln_log_reset();
       if (box != NULL && box->setup != NULL) {
         res = reedkiln_run_setup(box->setup, p, &box_item);
         if (reedkiln_bail_status != Reedkiln_OK) {
@@ -409,6 +545,20 @@ int reedkiln_main
     fprintf(stdout, "%s %lu - %s%s\n",
       result_text, ((unsigned long int)(test_i+1)), t[test_i].name,
       direct_text);
+    /* render the log */if (!skip_tf) {
+      unsigned int const log_index = reedkiln_log_swap();
+      struct reedkiln_logbuf const* const ptr = reedkiln_log_buffers+log_index;
+#if defined(Reedkiln_Atomic)
+      unsigned int const log_pos = Reedkiln_Atomic_Get(&ptr->pos);
+#else
+      unsigned int const log_pos = ptr->pos;
+#endif /*Reedkiln_Atomic*/
+      if (log_pos > 0) {
+        fputs("  ---\n  message: \"", stdout);
+        reedkiln_log_escape(ptr->data, log_pos, stdout);
+        fputs("\"\n  ...\n", stdout);
+      }
+    }
   }
   return total_res;
 }

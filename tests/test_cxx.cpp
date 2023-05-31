@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: Unlicense
 #include "../reedkiln.h"
+#include "../log.h"
 #include <string>
 #include <iostream>
+#include <iomanip>
 #include <cstring>
 
 class free_box {
@@ -52,6 +54,9 @@ public:
 
 int test_cxx_raii(void*);
 int test_cxx_assert(void*);
+int test_cxx_log(void*);
+int test_cxx_wlog(void*);
+int test_cxx_log_numbers(void*);
 int test_cxx_setup(void*);
 int test_cxx_setupfail(void*);
 int test_memrand(void*);
@@ -66,6 +71,9 @@ struct reedkiln_entry tests[] = {
   { "cxx/raii", test_cxx_raii, Reedkiln_TODO },
   { "cxx/assert", test_cxx_assert, Reedkiln_TODO,
     reedkiln::cxx_box<std::string>::ptr },
+  { "cxx/log", test_cxx_log },
+  { "cxx/wlog", test_cxx_wlog },
+  { "cxx/log/numbers", test_cxx_log_numbers },
   { "cxx/setup", test_cxx_setup, 0,
     reedkiln::cxx_box<std::string>::ptr },
   { "cxx/setupfail", test_cxx_setupfail, Reedkiln_TODO,
@@ -95,6 +103,30 @@ int test_cxx_assert(void* p) {
   reedkiln_assert(str.size() != 13);
   return Reedkiln_OK;
 }
+
+/* test c++ narrow logging */
+int test_cxx_log(void* p) {
+  reedkiln::cxx_log() << "Hello, world!";
+  return Reedkiln_OK;
+}
+/* test c++ wide logging */
+int test_cxx_wlog(void* p) {
+  reedkiln::cxx_wlog() << L"Hello, world!" << std::flush;
+  return Reedkiln_OK;
+}
+/* test c++ narrow logging */
+int test_cxx_log_numbers(void* p) {
+  unsigned int num = reedkiln_rand();
+  unsigned int other = reedkiln_rand();
+  reedkiln::cxx_log() << num << ' ';
+  reedkiln::cxx_log() << num*256.0/static_cast<double>(other);
+  reedkiln::cxx_log() << " " << -1.0;
+  reedkiln::cxx_log() << " " << &num;
+  reedkiln::cxx_log() << ' ' << std::hex << other;
+  reedkiln::cxx_log() << ' ' << std::dec << other;
+  return Reedkiln_OK;
+}
+
 /* test auto-generated box */
 int test_cxx_setup(void* p) {
   std::string &str = *static_cast<std::string*>(p);

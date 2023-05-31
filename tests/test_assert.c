@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Unlicense */
 #include "../reedkiln.h"
+#include "../log.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,7 @@ int test_assert(void*);
 int test_assert_fail(void*);
 int test_explicit_false(void*);
 int test_explicit_true(void*);
+int test_message(void*);
 int test_zeta(void*);
 
 struct reedkiln_entry tests[] = {
@@ -16,6 +18,7 @@ struct reedkiln_entry tests[] = {
   { "assert_fail", test_assert_fail, Reedkiln_TODO },
   { "explicit_false", test_explicit_false, Reedkiln_TODO },
   { "explicit_true", test_explicit_true },
+  { "message", test_message },
   { "zeta", test_zeta },
   { NULL, NULL }
 };
@@ -32,6 +35,12 @@ int test_assert_fail(void* p) {
   unsigned int v = reedkiln_rand();
   unsigned int w = reedkiln_rand();
   reedkiln_assert(v == w);
+  return Reedkiln_OK;
+}
+/* test message output */
+int test_message(void* p) {
+  char const str[] = "Hello, world!";
+  reedkiln_log_write(str, sizeof(str)-1);
   return Reedkiln_OK;
 }
 
