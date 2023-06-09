@@ -28,6 +28,7 @@ int test_message_a_rand(void*);
 int test_message_i(void*);
 int test_message_i_negative(void*);
 int test_message_i_precision(void*);
+int test_message_i_size(void*);
 int test_zeta(void*);
 
 struct reedkiln_entry tests[] = {
@@ -50,6 +51,7 @@ struct reedkiln_entry tests[] = {
   { "message_i", test_message_i },
   { "message_i/precision", test_message_i_precision },
   { "message_i/negative", test_message_i_negative },
+  { "message_i/size", test_message_i_size },
   { "zeta", test_zeta },
   { NULL, NULL }
 };
@@ -194,6 +196,23 @@ int test_message_i_precision(void* p) {
   size_t num = (reedkiln_rand()*(size_t)12345) & positive;
   size_t const old_num = num;
   size_t bytes = reedkiln_log_printf("Number %*.*zi.", 1, 1, old_num);
+  size_t expected = 0;
+  if (num == 0)
+    expected = 1;
+  else while (num > 0) {
+    num /= 10;
+    expected += 1;
+  }
+  reedkiln_assert(bytes == expected+9);
+  return Reedkiln_OK;
+}
+
+/* test message output : %zi */
+int test_message_i_size(void* p) {
+  size_t const positive = ((~(size_t)0)>>1);
+  size_t num = (reedkiln_rand()*(size_t)12345) & positive;
+  size_t const old_num = num;
+  size_t bytes = reedkiln_log_printf("Number %zi.", old_num);
   size_t expected = 0;
   if (num == 0)
     expected = 1;
