@@ -425,7 +425,7 @@ reedkiln_size reedkiln_log_printf(char const* format, ...) {
        ? reedkiln_log_size - src : count);
     va_list ap;
     va_start(ap, format);
-    (void)reedkiln_log_vsnprintf(ptr->data, put_length, format, ap);
+    (void)reedkiln_log_vsnprintf(ptr->data+src, put_length, format, ap);
     va_end(ap);
     return (unsigned int)put_length;
   }
