@@ -602,7 +602,7 @@ int reedkiln_log_vsnprintf
 {
   unsigned int count = 0;
 #if (defined __STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-  count = vsnprintf(output, sz, format, ap);
+  count = vsnprintf((char*)output, sz, format, ap);
 #else
   char const* p;
   for (p = format; *p; ++p) {
@@ -673,7 +673,7 @@ int reedkiln_log_vsnprintf
       case 'x':
         {
           reedkiln_intmax value;
-          char ibuffer[Reedkiln_ItoXMax];
+          unsigned char ibuffer[Reedkiln_ItoXMax];
           int ilen;
           if (*p == 'p')
             value = (reedkiln_intmax)va_arg(ap, void const*);
@@ -704,7 +704,7 @@ int reedkiln_log_vsnprintf
         {
           reedkiln_intmax value;
           reedkiln_intmax valuemax;
-          char ibuffer[Reedkiln_ItoXMax];
+          unsigned char ibuffer[Reedkiln_ItoXMax];
           int ilen;
           if (type_adjust <= -2) {
             value = va_arg(ap, unsigned int)&UCHAR_MAX;
@@ -742,7 +742,7 @@ int reedkiln_log_vsnprintf
       case 'A':
         {
           long double value;
-          char dbuffer[Reedkiln_DtoXMax];
+          unsigned char dbuffer[Reedkiln_DtoXMax];
           int dlen = 0;
           char sign = 0;
           char prefix = 1;
@@ -774,7 +774,7 @@ int reedkiln_log_vsnprintf
             if (prefix)
               count = reedkiln_log_count_strn(output, sz, count, 2,"0x");
             count = reedkiln_log_count_strn
-              (output, sz, count, dlen, dbuffer);
+              (output, sz, count, dlen, (char*)dbuffer);
           }
         } break;
       case '%':
