@@ -38,6 +38,12 @@ reedkiln_size reedkiln_log_write(void const* buffer, reedkiln_size count);
  * @brief Writes formatted output to the log buffer.
  * @param format printf-style format
  * @return the number of bytes actually written
+ * @note When compiled without C99 support, this function uses a shim
+ *   that supports a small subset of format specifiers:
+ *   `%%`, `%a`, `%La`, `%i`, `%li`, `%zi`,
+ *   `%x`, `%lx`, `%zx`, `%p`, `%s`, `%ls`.
+ *   This shim also supports precison for `%s`, and otherwise accounts
+ *   for `%*.*i` additional arguments.
  */
 reedkiln_size reedkiln_log_printf(Reedkiln_argPrintf char const* format, ...)
   Reedkiln_attrPrintf(1,2);
