@@ -40,7 +40,7 @@
 static void Reedkiln_Atomic_Put(unsigned int volatile* c, unsigned int v) {
   *c = v;
 }
-static unsigned int Reedkiln_Atomic_Get(unsigned int volatile* c) {
+static unsigned int Reedkiln_Atomic_Get(unsigned int const volatile* c) {
   return *c;
 }
 #  define Reedkiln_Atomic
