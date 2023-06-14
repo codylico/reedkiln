@@ -897,6 +897,7 @@ int reedkiln_main
   int total_res = EXIT_SUCCESS;
   char const* testname_prefix = "";
   unsigned int rand_seed = reedkiln_default_seed();
+  struct reedkiln_vtable const initial_table = reedkiln_vtable_c;
   reedkiln_next_status = Reedkiln_OK;
   reedkiln_bail_status = Reedkiln_OK;
   /* inspect args */{
@@ -965,6 +966,7 @@ int reedkiln_main
       unsigned int log_index;
       reedkiln_srand(rand_seed);
       reedkiln_log_reset();
+      reedkiln_vtable_c = initial_table;
       if (box != NULL && box->setup != NULL) {
         res = reedkiln_run_setup(box->setup, p, &box_item);
         if (reedkiln_bail_status != Reedkiln_OK) {
