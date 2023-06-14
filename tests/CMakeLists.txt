@@ -29,6 +29,14 @@ if (Reedkiln_BUILD_TESTING AND BUILD_TESTING)
       PRIVATE cxx_variadic_templates cxx_static_assert cxx_constexpr
       )
     add_test(NAME "reedkiln::expect" COMMAND reedkiln_test_expect)
+
+    add_executable(reedkiln_test_reset "test_reset.cpp")
+    target_link_libraries(reedkiln_test_reset
+      PRIVATE reedkiln)
+    target_compile_features(reedkiln_test_reset
+      PRIVATE cxx_variadic_templates cxx_static_assert cxx_constexpr
+      )
+    add_test(NAME "reedkiln::reset" COMMAND reedkiln_test_reset)
   endif (Reedkiln_ADD_CXX AND Reedkiln_TEST_CXX)
 
   add_executable(reedkiln_test_c "test_c.c")
