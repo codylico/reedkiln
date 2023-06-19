@@ -92,7 +92,7 @@ int test_message_s(void* p) {
 /* test message output : %*s */
 int test_message_s_precision(void* p) {
   char const str[] = "abcdefghijklm";
-  unsigned int const num = reedkiln_rand()%12;
+  unsigned int const num = 1+reedkiln_rand()%12;
   size_t bytes = reedkiln_log_printf("Quotation: \"%.*s\" %.5s",
     num, str, str);
   reedkiln_assert(bytes == 15+num+5);
@@ -110,7 +110,7 @@ int test_message_ls(void* p) {
 /* test message output : %.*ls */
 int test_message_ls_precision(void* p) {
   wchar_t const str[] = L"abcdefghijklm";
-  unsigned int const num = reedkiln_rand()%12;
+  unsigned int const num = 1+reedkiln_rand()%12;
   size_t bytes = reedkiln_log_printf("Wide %.*ls", num, str);
   reedkiln_assert(bytes == 6+num);
   return Reedkiln_OK;
