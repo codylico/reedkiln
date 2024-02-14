@@ -350,7 +350,7 @@ unsigned int reedkiln_log_swap(void) {
   Reedkiln_Atomic_Put(&reedkiln_log_index, src+1);
   return src%2u;
 #else
-  return (reedkiln_log_swap++)%2u;
+  return (reedkiln_log_index++)%2u;
 #endif /*Reedkiln_Atomic*/
 }
 
