@@ -144,7 +144,11 @@ void reedkiln_assert_ex
  *   is running at a time.
  */
 int reedkiln_main
-    (struct reedkiln_entry const* t, int argc, char **argv, void* p);
+    (struct reedkiln_entry const* t, int argc, char **argv, void* p)
+#if (defined __cplusplus) && (defined Reedkiln_UseNoexcept)
+    noexcept(false)
+#endif //__cplusplus && Reedkiln_UseNoexcept
+    ;
 
 /**
  * @brief Configure the failure code path.
