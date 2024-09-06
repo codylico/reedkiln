@@ -29,6 +29,7 @@ int test_message_i(void*);
 int test_message_i_negative(void*);
 int test_message_i_precision(void*);
 int test_message_i_size(void*);
+int test_message_o_unknown(void*);
 int test_zeta(void*);
 
 struct reedkiln_entry tests[] = {
@@ -52,6 +53,7 @@ struct reedkiln_entry tests[] = {
   { "message_i/precision", test_message_i_precision },
   { "message_i/negative", test_message_i_negative },
   { "message_i/size", test_message_i_size },
+  { "message_o/unknown", test_message_o_unknown },
   { "zeta", test_zeta },
   { NULL, NULL }
 };
@@ -238,6 +240,16 @@ int test_message_i_negative(void* p) {
   reedkiln_assert(bytes == expected+10);
   return Reedkiln_OK;
 }
+
+/* test message output : %o */
+int test_message_o_unknown(void* p) {
+  unsigned int num = reedkiln_rand() % INT_MAX;
+  unsigned int const old_num = num;
+  size_t bytes = reedkiln_log_printf("Number %o.", old_num);
+  /* no expectation, since %o not officially supported. */
+  return Reedkiln_IGNORE;
+}
+
 /* test for assert conversion to Boolean false */
 int test_explicit_false(void* p) {
   reedkiln_assert(NULL);

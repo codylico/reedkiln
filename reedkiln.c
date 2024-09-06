@@ -64,6 +64,7 @@ static unsigned int Reedkiln_Atomic_Get(unsigned int const volatile* c) {
 #include <limits.h>
 #include <float.h>
 #include <stdarg.h>
+#include <errno.h>
 
 struct reedkiln_logbuf;
 
@@ -778,9 +779,15 @@ int reedkiln_log_vsnprintf
           }
         } break;
       case '%':
-      default:
         count = reedkiln_log_count_strn(output, sz, count, 1, "%");
         break;
+      default:
+#if (defined EINVAL)
+        errno = EINVAL;
+#else
+        errno = EDOM;
+#endif /*EINVAL*/
+        return -1;
       }
     } else {
       count = reedkiln_log_count_strn(output, sz, count, 1,p);
