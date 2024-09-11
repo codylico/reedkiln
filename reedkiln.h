@@ -6,21 +6,15 @@
 #if !defined(hg_Reedkiln_reedkiln_h_)
 #define hg_Reedkiln_reedkiln_h_
 
-#if !(defined Reedkiln_UseExpect)
-#  if (defined __cplusplus) && (__cplusplus >= 201103L)
-#    define Reedkiln_UseExpect
-#  endif /*__cplusplus*/
-#endif /*Reedkiln_UseExpect*/
-#if !(defined Reedkiln_UseNoexcept)
-#  if (defined __cplusplus) && (__cplusplus >= 201103L)
-#    define Reedkiln_UseNoexcept
-#  endif /*__cplusplus*/
-#endif /*Reedkiln_UseNoexcept*/
-#if !(defined Reedkiln_UseConstexpr)
-#  if (defined __cplusplus) && (__cplusplus >= 201103L)
-#    define Reedkiln_UseConstexpr
-#  endif /*__cplusplus*/
-#endif /*Reedkiln_UseConstexpr*/
+#if (defined __cplusplus)
+#  if (__cplusplus >= 201103L)
+#    define Reedkiln_Noexcept noexcept
+#  else
+#    define Reedkiln_Noexcept throw()
+#  endif /*__cplusplus>=201103L*/
+#else
+#  define Reedkiln_Noexcept
+#endif /*__cplusplus*/
 
 #if defined(__cplusplus)
 #  include <exception>
@@ -128,10 +122,8 @@ void reedkiln_memrand(void* b, reedkiln_size sz);
 void reedkiln_assert_ex
   (int val, char const* text, char const* file, unsigned long int line);
 
-#if !(defined Reedkiln_NoAssert)
 #define reedkiln_assert(x) \
     reedkiln_assert_ex(((x)?1:0), #x, __FILE__, __LINE__)
-#endif /*Reedkiln_NoAssert*/
 
 /**
  * @brief Run some tests.
@@ -145,9 +137,9 @@ void reedkiln_assert_ex
  */
 int reedkiln_main
     (struct reedkiln_entry const* t, int argc, char **argv, void* p)
-#if (defined __cplusplus) && (defined Reedkiln_UseNoexcept)
+#if (defined __cplusplus) && (__cplusplus >= 201103L)
     noexcept(false)
-#endif //__cplusplus && Reedkiln_UseNoexcept
+#endif /*__cplusplus*/
     ;
 
 /**
@@ -193,13 +185,7 @@ namespace reedkiln {
   class cxx_failure : public std::exception {
   public:
     cxx_failure() : std::exception() {}
-    char const* what() const
-#  if (defined Reedkiln_UseNoexcept)
-        noexcept
-#  else
-        throw()
-#  endif /*Reedkiln_UseNoexcept*/
-    {
+    char const* what() const Reedkiln_Noexcept {
       return "A test callback reports \"not ok\".";
     }
   };
@@ -211,30 +197,18 @@ namespace reedkiln {
     static void* setup(void*) {
       return new t;
     }
-    static void teardown(void* p)
-#  if (defined Reedkiln_UseNoexcept)
-        noexcept
-#  else
-        throw()
-#  endif /*Reedkiln_UseNoexcept*/
-    {
+    static void teardown(void* p) Reedkiln_Noexcept {
       delete static_cast<t*>(p);
     }
     static reedkiln_box const value;
-#  if (defined Reedkiln_UseConstexpr)
-    static constexpr reedkiln_box const* ptr = &value;
-#  else
     static reedkiln_box const* const ptr;
-#  endif /*Reedkiln_UseConstexpr*/
   };
   template <typename t>
   reedkiln_box const cxx_box<t>::value = { &setup, &teardown };
-#  if !(defined Reedkiln_UseConstexpr)
   template <typename t>
   reedkiln_box const* const cxx_box<t>::ptr = &cxx_box<t>::value;
-#  endif /*Reedkiln_UseConstexpr*/
 
-#  if (defined Reedkiln_UseExpect)
+#  if (defined Reedkiln_UseExpect) || (__cplusplus >= 201103L)
   /**
    * @brief Allow the exception and report success.
    * @tparam ExceptionType type of exception to allow

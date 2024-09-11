@@ -91,8 +91,6 @@ static void reedkiln_log_reset(void);
 static unsigned int reedkiln_log_nextpos
   (struct reedkiln_logbuf* ptr, reedkiln_size n);
 static void reedkiln_log_escape(unsigned char const* data, size_t n, FILE* f);
-static int reedkiln_log_setline(char const* name, unsigned long int lineno);
-static int reedkiln_isslash(int ch);
 static int reedkiln_log_vsnprintf
   (unsigned char* output, size_t sz, char const* format, va_list ap);
 static int reedkiln_log_itox
