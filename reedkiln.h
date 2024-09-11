@@ -7,13 +7,11 @@
 #define hg_Reedkiln_reedkiln_h_
 
 #if (defined __cplusplus)
-#  if (__cplusplus >= 201103L)
+#  if (defined Reedkiln_UseNoexcept) || (__cplusplus >= 201103L)
 #    define Reedkiln_Noexcept noexcept
 #  else
 #    define Reedkiln_Noexcept throw()
 #  endif /*__cplusplus>=201103L*/
-#else
-#  define Reedkiln_Noexcept
 #endif /*__cplusplus*/
 
 #if defined(__cplusplus)
@@ -137,7 +135,8 @@ void reedkiln_assert_ex
  */
 int reedkiln_main
     (struct reedkiln_entry const* t, int argc, char **argv, void* p)
-#if (defined __cplusplus) && (__cplusplus >= 201103L)
+#if (defined __cplusplus) && \
+  ((__cplusplus >= 201103L) || (defined Reedkiln_UseNoexcept))
     noexcept(false)
 #endif /*__cplusplus*/
     ;
