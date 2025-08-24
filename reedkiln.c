@@ -26,25 +26,33 @@
 #  define Reedkiln_Atomic_Put(c,v) \
       atomic_store_explicit((c),(v),memory_order_release)
 #  define Reedkiln_Atomic_Get(c) atomic_load_explicit((c),memory_order_acquire)
-#elif (defined _MSC_VER)
-#  include <intrin.h>
-#  include <limits.h>
-#  define Reedkiln_Atomic_tag
-#  if (ULONG_MAX == UINT_MAX)
-#    define Reedkiln_Atomic_Xchg(c,v) \
-        _InterlockedExchange((c), (v))
+#else
+#  if (defined _MSC_VER)
+#    include <intrin.h>
+#    include <limits.h>
+#    if (ULONG_MAX == UINT_MAX)
+#      define Reedkiln_Atomic_Xchg(c,v) \
+          _InterlockedExchange((c), (v))
+#    else
+#      define Reedkiln_Atomic_Xchg(c,v) \
+          _InterlockedExchange16((c), (v))
+#    endif /*UINT_MAX*/
 #  else
-#    define Reedkiln_Atomic_Xchg(c,v) \
-        _InterlockedExchange16((c), (v))
-#  endif /*UINT_MAX*/
+static unsigned int Reedkiln_Atomic_Xchg(unsigned int volatile* c, unsigned int v) {
+  unsigned int const out = *c;
+  *c = v;
+  return out;
+}
+#  endif /*_MSC_VER*/
+#  define Reedkiln_Atomic_tag
 static void Reedkiln_Atomic_Put(unsigned int volatile* c, unsigned int v) {
   *c = v;
 }
 static unsigned int Reedkiln_Atomic_Get(unsigned int const volatile* c) {
   return *c;
 }
-#  define Reedkiln_Atomic
 #endif /*Reedkiln_Atomic*/
+
 #if defined(Reedkiln_Threads)
 #  include <threads.h>
 #  define Reedkiln_Thread_local _Thread_local
@@ -147,11 +155,7 @@ struct reedkiln_jmp {
 };
 
 struct reedkiln_logbuf {
-#if defined(Reedkiln_Atomic)
   Reedkiln_Atomic_tag unsigned int pos;
-#else
-  unsigned int pos;
-#endif /*Reedkiln_Atomic*/
   unsigned char* data;
 };
 
@@ -162,22 +166,13 @@ struct reedkiln_setup_data {
 };
 
 /* BEGIN failure path */
-#if defined(Reedkiln_Atomic)
 static Reedkiln_Atomic_tag unsigned int reedkiln_next_status = Reedkiln_OK;
 static Reedkiln_Atomic_tag unsigned int reedkiln_bail_status = Reedkiln_OK;
-#else
-static unsigned int reedkiln_next_status = Reedkiln_OK;
-static unsigned int reedkiln_bail_status = Reedkiln_OK;
-#endif /*Reedkiln_Atomic*/
 
 static Reedkiln_Thread_local struct reedkiln_jmp reedkiln_next_jmp = {0};
 
 void reedkiln_fail(void) {
-#if defined(Reedkiln_Atomic)
   Reedkiln_Atomic_Put(&reedkiln_next_status, Reedkiln_NOT_OK);
-#else
-  reedkiln_next_status = Reedkiln_NOT_OK;
-#endif /*Reedkiln_Atomic*/
   (*reedkiln_vtable_c.fail_cb)();
   abort()/* in case the above doesn't work */;
 }
@@ -193,13 +188,8 @@ void reedkiln_assert_ex
 }
 
 void reedkiln_bail_out(char const* reason) {
-#if defined(Reedkiln_Atomic)
   Reedkiln_Atomic_Put(&reedkiln_next_status, Reedkiln_NOT_OK);
   Reedkiln_Atomic_Put(&reedkiln_bail_status, Reedkiln_NOT_OK);
-#else
-  reedkiln_next_status = Reedkiln_NOT_OK;
-  reedkiln_bail_status = Reedkiln_NOT_OK;
-#endif /*Reedkiln_Atomic*/
   reedkiln_print_bail(reason);
   (*reedkiln_vtable_c.fail_cb)();
   /* in case the above doesn't work */{
@@ -219,22 +209,12 @@ void reedkiln_print_bail(char const* reason) {
 
 int reedkiln_run_test(reedkiln_cb cb, void* p) {
   int res;
-#if defined(Reedkiln_Atomic)
   Reedkiln_Atomic_Put(&reedkiln_next_status, Reedkiln_OK);
-#else
-  reedkiln_next_status = Reedkiln_OK;
-#endif
   res = (*reedkiln_vtable_c.catch_cb)(cb, p);
   reedkiln_next_jmp.active = 0u;
-#if defined(Reedkiln_Atomic)
   return res == Reedkiln_OK
     ? Reedkiln_Atomic_Get(&reedkiln_next_status)
     : res;
-#else
-  return res == Reedkiln_OK
-    ? reedkiln_next_status
-    : res;
-#endif /*Reedkiln_Atomic*/
 }
 
 int reedkiln_setup_redirect(void* d) {
@@ -257,11 +237,7 @@ int reedkiln_run_setup(reedkiln_setup_cb cb, void* p, void** out) {
 /* END   failure path */
 
 /* BEGIN random stuff */
-#if defined(Reedkiln_Atomic)
 static Reedkiln_Atomic_tag unsigned int reedkiln_rand_seed = 0u;
-#else
-static unsigned int reedkiln_rand_seed = 0u;
-#endif /*Reedkiln_Atomic*/
 
 
 unsigned int reedkiln_rand(void) {
@@ -271,26 +247,17 @@ unsigned int reedkiln_rand(void) {
 unsigned int reedkiln_rand_step(void) {
   static unsigned int const mul = 48271u;
   static unsigned int const add = 9u;
-#if defined(Reedkiln_Atomic)
   unsigned int src = Reedkiln_Atomic_Get(&reedkiln_rand_seed);
   unsigned int in, out;
   do {
     in = src;
     out = in*mul+add;
   } while ((src = Reedkiln_Atomic_Xchg(&reedkiln_rand_seed,out)) != in);
-#else
-  unsigned int out = reedkiln_rand_seed*mul+add;
-  reedkiln_rand_seed = out;
-#endif /*Reedkiln_Atomic*/
   return out;
 }
 
 void reedkiln_srand(unsigned int s) {
-#if defined(Reedkiln_Atomic)
   Reedkiln_Atomic_Put(&reedkiln_rand_seed, s);
-#else
-  reedkiln_rand_seed = s;
-#endif /*Reedkiln_Atomic*/
 }
 
 unsigned int reedkiln_default_seed(void) {
@@ -322,35 +289,19 @@ static struct reedkiln_logbuf reedkiln_log_buffers[2] = {
   { 0, reedkiln_logbuf_default+sizeof(reedkiln_logbuf_default)/2u }
 };
 static unsigned int reedkiln_log_size = sizeof(reedkiln_logbuf_default)/2u;
-#if defined(Reedkiln_Atomic)
 static Reedkiln_Atomic_tag unsigned int reedkiln_log_index = 0u;
-#else
-static unsigned int reedkiln_log_index = 0u;
-#endif /*Reedkiln_Atomic*/
 
 void reedkiln_log_reset(void) {
-#if defined(Reedkiln_Atomic)
   unsigned int const swap_index = Reedkiln_Atomic_Get(&reedkiln_log_index)%2u;
-#else
-  unsigned int const swap_index = reedkiln_log_index%2u;
-#endif /*Reedkiln_Atomic*/
   struct reedkiln_logbuf* const ptr = reedkiln_log_buffers+swap_index;
-#if defined(Reedkiln_Atomic)
   Reedkiln_Atomic_Put(&ptr->pos, 0);
-#else
-  ptr->pos = 0;
-#endif /*Reedkiln_Atomic*/
   return;
 }
 
 unsigned int reedkiln_log_swap(void) {
-#if defined(Reedkiln_Atomic)
   unsigned int const src = Reedkiln_Atomic_Get(&reedkiln_log_index);
   Reedkiln_Atomic_Put(&reedkiln_log_index, src+1);
   return src%2u;
-#else
-  return (reedkiln_log_index++)%2u;
-#endif /*Reedkiln_Atomic*/
 }
 
 unsigned int reedkiln_log_nextpos
@@ -358,7 +309,6 @@ unsigned int reedkiln_log_nextpos
 {
   unsigned int const top =
      (n > reedkiln_log_size) ? 0 : (unsigned int)(reedkiln_log_size - n);
-#if defined(Reedkiln_Atomic)
   unsigned int src = Reedkiln_Atomic_Get(&ptr->pos);
   unsigned int in, out;
   do {
@@ -367,10 +317,6 @@ unsigned int reedkiln_log_nextpos
     in = src;
     out = (in >= top ? reedkiln_log_size : (unsigned)(in + n));
   } while ((src = Reedkiln_Atomic_Xchg(&ptr->pos,out)) != in);
-#else
-  unsigned int const in = ptr->pos;
-  ptr->pos = (in >= top ? reedkiln_log_size : (unsigned)(in + n));
-#endif /*Reedkiln_Atomic*/
   return in;
 }
 
@@ -378,11 +324,7 @@ reedkiln_size reedkiln_log_write(void const* buffer, reedkiln_size count) {
   unsigned int const n =
     (count >= (UINT_MAX/2)) ? (UINT_MAX/2) : ((unsigned int)count);
   unsigned char const* data = (unsigned char const*)buffer;
-#if defined(Reedkiln_Atomic)
   unsigned int const swap_index = Reedkiln_Atomic_Get(&reedkiln_log_index)%2u;
-#else
-  unsigned int const swap_index = reedkiln_log_index%2u;
-#endif /*Reedkiln_Atomic*/
   struct reedkiln_logbuf* const ptr = reedkiln_log_buffers+swap_index;
   unsigned int const src = reedkiln_log_nextpos(ptr, count);
   if (src == UINT_MAX)
@@ -397,11 +339,7 @@ reedkiln_size reedkiln_log_write(void const* buffer, reedkiln_size count) {
 
 reedkiln_size reedkiln_log_printf(char const* format, ...) {
   unsigned int count;
-#if defined(Reedkiln_Atomic)
   unsigned int const swap_index = Reedkiln_Atomic_Get(&reedkiln_log_index)%2u;
-#else
-  unsigned int const swap_index = reedkiln_log_index%2u;
-#endif /*Reedkiln_Atomic*/
   struct reedkiln_logbuf* const ptr = reedkiln_log_buffers+swap_index;
   unsigned int src;
   /* calculate size */{
@@ -1009,11 +947,7 @@ int reedkiln_main
     /* render the log */if (!skip_tf) {
       unsigned int const log_index = reedkiln_log_swap();
       struct reedkiln_logbuf const* const ptr = reedkiln_log_buffers+log_index;
-#if defined(Reedkiln_Atomic)
       unsigned int const log_pos = Reedkiln_Atomic_Get(&ptr->pos);
-#else
-      unsigned int const log_pos = ptr->pos;
-#endif /*Reedkiln_Atomic*/
       if (log_pos > 0) {
         fputs("  ---\n  message: \"", stdout);
         reedkiln_log_escape(ptr->data, log_pos, stdout);
