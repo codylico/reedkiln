@@ -126,6 +126,14 @@ struct reedkiln_log_attr {
 };
 static
 struct reedkiln_log_attr reedkiln_log_adjust_type(char const** p);
+/**
+ * @brief Find the base name of the source file.
+ * @param full_path path of source file
+ * @return the last component of the path, otherwise `full_path`
+ */
+static char const* reedkiln_basename(char const* full_path);
+
+reedkiln_size reedkiln_log_printf(char const* format, ...);
 
 enum reedkiln_const {
   /** @note Max length of encoding a wchar_t to UTF-8 */
@@ -165,6 +173,20 @@ struct reedkiln_setup_data {
   void* out;
 };
 
+#pragma region "reedkiln / file names"
+static char const* reedkiln_basename(char const* full_path) {
+  char const* base = full_path;
+  char const* p = NULL;
+  if (!full_path)
+    return full_path;
+  for (p = full_path; *p; ++p) {
+    if (memchr("/\\", *p, 2) && *(p+1))
+      base = p+1;
+  }
+  return base;
+}
+#pragma endregion
+
 /* BEGIN failure path */
 static Reedkiln_Atomic_tag unsigned int reedkiln_next_status = Reedkiln_OK;
 static Reedkiln_Atomic_tag unsigned int reedkiln_bail_status = Reedkiln_OK;
@@ -181,7 +203,10 @@ void reedkiln_assert_ex
   (int val, char const* text, char const* file, unsigned long int line)
 {
   if (!val) {
-    fprintf(stdout, "## assert %s:%lu: %s\n", file, line, text);
+    /* find the base name of the source file */
+    char const* const base = reedkiln_basename(file);
+    /* output the text */
+    reedkiln_log_printf("[assert %s:%li: %s]", base, (line > LONG_MAX ? LONG_MAX : (long)line), text);
     reedkiln_fail();
   }
   return;
