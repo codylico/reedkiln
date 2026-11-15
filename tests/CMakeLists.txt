@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.12)
 
 if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
   option(Reedkiln_BUILD_TESTING "Enable tests for Reedkiln" ON)
