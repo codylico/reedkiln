@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.12)
 project(Reedkiln_test C)
 
 # adapted from:
@@ -8,7 +8,7 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 endif(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 
 add_library(reedkiln STATIC "reedkiln.c" "reedkiln.h")
-option(Reedkiln_ADD_CXX "Add a C++ target with automatic defines." OFF)
+option(Reedkiln_ADD_CXX "Add a C++ target with automatic defines." ON)
 if (Reedkiln_ADD_CXX)
   enable_language(CXX)
   target_compile_definitions(reedkiln
